@@ -1,0 +1,11 @@
+**/.git
+**/.venv
+**/node_modules
+**/__pycache__
+**/.pytest_cache
+**/evidence
+**/.env
+**/.env.local
+**/*.db
+**/instance/dev-mailbox
+docs

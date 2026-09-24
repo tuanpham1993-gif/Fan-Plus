@@ -1,0 +1,28 @@
+{
+  "name": "fan-hub-plus-frontend",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build --outDir dist-vite",
+    "preview": "vite preview --outDir dist-vite --host 127.0.0.1",
+    "start": "node tools/serve.mjs",
+    "build:portable": "node tools/build-portable.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "test:ui": "python tests/ui_test.py"
+  },
+  "dependencies": {
+    "react": "19.1.1",
+    "react-dom": "19.1.1"
+  },
+  "devDependencies": {
+    "@types/react": "19.1.10",
+    "@types/react-dom": "19.1.9",
+    "typescript": "5.9.2",
+    "vite": "7.1.3"
+  }
+}

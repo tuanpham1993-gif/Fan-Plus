@@ -1,0 +1,304 @@
+TAP version 13
+# Subtest: First-party UI source and illustration assets contain no emoji presentation characters
+ok 1 - First-party UI source and illustration assets contain no emoji presentation characters
+  ---
+  duration_ms: 10.094979
+  type: 'test'
+  ...
+# Subtest: Editorial home uses numbered categories without sparkle icon or floating assistant
+ok 2 - Editorial home uses numbered categories without sparkle icon or floating assistant
+  ---
+  duration_ms: 2.385273
+  type: 'test'
+  ...
+# Subtest: seed has 8 distinct categories and 24 original published entries
+ok 3 - seed has 8 distinct categories and 24 original published entries
+  ---
+  duration_ms: 1.223263
+  type: 'test'
+  ...
+# Subtest: combined filters are conjunctive
+ok 4 - combined filters are conjunctive
+  ---
+  duration_ms: 0.573144
+  type: 'test'
+  ...
+# Subtest: search is case-insensitive and accent-insensitive
+ok 5 - search is case-insensitive and accent-insensitive
+  ---
+  duration_ms: 0.588898
+  type: 'test'
+  ...
+# Subtest: search applies every query token
+ok 6 - search applies every query token
+  ---
+  duration_ms: 0.390238
+  type: 'test'
+  ...
+# Subtest: draft entries never appear in public filtering
+ok 7 - draft entries never appear in public filtering
+  ---
+  duration_ms: 10.204454
+  type: 'test'
+  ...
+# Subtest: pagination clamps invalid or out-of-range page numbers
+ok 8 - pagination clamps invalid or out-of-range page numbers
+  ---
+  duration_ms: 0.686424
+  type: 'test'
+  ...
+# Subtest: popular filter applies the documented demo threshold
+ok 9 - popular filter applies the documented demo threshold
+  ---
+  duration_ms: 1.929307
+  type: 'test'
+  ...
+# Subtest: alphabetical and popularity sorting are stable
+ok 10 - alphabetical and popularity sorting are stable
+  ---
+  duration_ms: 0.797201
+  type: 'test'
+  ...
+# Subtest: media filter accepts multiple media types
+ok 11 - media filter accepts multiple media types
+  ---
+  duration_ms: 0.317709
+  type: 'test'
+  ...
+# Subtest: distance is zero for identical points and symmetric
+ok 12 - distance is zero for identical points and symmetric
+  ---
+  duration_ms: 0.486533
+  type: 'test'
+  ...
+# Subtest: unsafe outbound URLs and credential-bearing URLs are rejected
+ok 13 - unsafe outbound URLs and credential-bearing URLs are rejected
+  ---
+  duration_ms: 0.21283
+  type: 'test'
+  ...
+# Subtest: return paths reject external origins and backslashes
+ok 14 - return paths reject external origins and backslashes
+  ---
+  duration_ms: 0.144928
+  type: 'test'
+  ...
+# Subtest: recommendations exclude saved content and provide an explicit reason
+ok 15 - recommendations exclude saved content and provide an explicit reason
+  ---
+  duration_ms: 0.343818
+  type: 'test'
+  ...
+# Subtest: all 8 categories have a fictional release fixture, including merchandise
+ok 16 - all 8 categories have a fictional release fixture, including merchandise
+  ---
+  duration_ms: 0.123466
+  type: 'test'
+  ...
+# Subtest: calendar export uses UTC, escapes punctuation and marks demo
+ok 17 - calendar export uses UTC, escapes punctuation and marks demo
+  ---
+  duration_ms: 0.681677
+  type: 'test'
+  ...
+# Subtest: calendar lines fold safely at UTF-8 byte boundaries
+ok 18 - calendar lines fold safely at UTF-8 byte boundaries
+  ---
+  duration_ms: 2.142909
+  type: 'test'
+  ...
+# Subtest: content validation rejects invalid title, year and media scheme
+ok 19 - content validation rejects invalid title, year and media scheme
+  ---
+  duration_ms: 0.227513
+  type: 'test'
+  ...
+# Subtest: published seed IDs referenced by category are valid
+ok 20 - published seed IDs referenced by category are valid
+  ---
+  duration_ms: 0.118359
+  type: 'test'
+  ...
+# Subtest: HTTP serves application shell
+ok 21 - HTTP serves application shell
+  ---
+  duration_ms: 101.305169
+  type: 'test'
+  ...
+# Subtest: HTTP supports deep SPA links
+ok 22 - HTTP supports deep SPA links
+  ---
+  duration_ms: 4.530871
+  type: 'test'
+  ...
+# Subtest: HTTP JavaScript has executable MIME type
+ok 23 - HTTP JavaScript has executable MIME type
+  ---
+  duration_ms: 7.987188
+  type: 'test'
+  ...
+# Subtest: HTTP missing asset is a 404, not application HTML
+ok 24 - HTTP missing asset is a 404, not application HTML
+  ---
+  duration_ms: 2.498334
+  type: 'test'
+  ...
+# Subtest: HTTP read-only preview rejects POST
+ok 25 - HTTP read-only preview rejects POST
+  ---
+  duration_ms: 6.158299
+  type: 'test'
+  ...
+# Subtest: HTTP rejects malformed percent encoding
+ok 26 - HTTP rejects malformed percent encoding
+  ---
+  duration_ms: 1.821134
+  type: 'test'
+  ...
+# Subtest: HTTP serves partial local video bytes
+ok 27 - HTTP serves partial local video bytes
+  ---
+  duration_ms: 4.508392
+  type: 'test'
+  ...
+# Subtest: HTTP serves suffix byte range
+ok 28 - HTTP serves suffix byte range
+  ---
+  duration_ms: 2.650473
+  type: 'test'
+  ...
+# Subtest: HTTP rejects unsatisfiable range
+ok 29 - HTTP rejects unsatisfiable range
+  ---
+  duration_ms: 5.884736
+  type: 'test'
+  ...
+# Subtest: HTTP HEAD sends headers without a body
+ok 30 - HTTP HEAD sends headers without a body
+  ---
+  duration_ms: 3.949941
+  type: 'test'
+  ...
+# Subtest: HTTP serves a valid caption file
+ok 31 - HTTP serves a valid caption file
+  ---
+  duration_ms: 1.988826
+  type: 'test'
+  ...
+# Subtest: HTTP supplies CSP, no-sniff and referrer controls
+ok 32 - HTTP supplies CSP, no-sniff and referrer controls
+  ---
+  duration_ms: 4.602064
+  type: 'test'
+  ...
+# Subtest: visitor cannot bookmark and a member cannot mutate admin content
+ok 33 - visitor cannot bookmark and a member cannot mutate admin content
+  ---
+  duration_ms: 485.698665
+  type: 'test'
+  ...
+# Subtest: wrong password rejected; correct member session recognized
+ok 34 - wrong password rejected; correct member session recognized
+  ---
+  duration_ms: 362.03618
+  type: 'test'
+  ...
+# Subtest: bookmark toggle is unique and per user; private note ownership enforced
+ok 35 - bookmark toggle is unique and per user; private note ownership enforced
+  ---
+  duration_ms: 1124.594899
+  type: 'test'
+  ...
+# Subtest: rating is an upsert per user and published content only
+ok 36 - rating is an upsert per user and published content only
+  ---
+  duration_ms: 803.851465
+  type: 'test'
+  ...
+# Subtest: fan submission remains private until approval and cannot be reviewed twice
+ok 37 - fan submission remains private until approval and cannot be reviewed twice
+  ---
+  duration_ms: 805.949666
+  type: 'test'
+  ...
+# Subtest: rejection requires a reason
+ok 38 - rejection requires a reason
+  ---
+  duration_ms: 805.515985
+  type: 'test'
+  ...
+# Subtest: deleting content cleans up related notes, ratings and reading activity
+ok 39 - deleting content cleans up related notes, ratings and reading activity
+  ---
+  duration_ms: 803.774068
+  type: 'test'
+  ...
+# Subtest: in-use categories cannot be deleted; empty categories can be removed
+ok 40 - in-use categories cannot be deleted; empty categories can be removed
+  ---
+  duration_ms: 644.144301
+  type: 'test'
+  ...
+# Subtest: admin cannot suspend self; suspended member cannot log in
+ok 41 - admin cannot suspend self; suspended member cannot log in
+  ---
+  duration_ms: 643.169028
+  type: 'test'
+  ...
+# Subtest: registration stores no plaintext password and supports a same-tab sign-in
+ok 42 - registration stores no plaintext password and supports a same-tab sign-in
+  ---
+  duration_ms: 324.796891
+  type: 'test'
+  ...
+# Subtest: reset token is single-use and changes the local password
+ok 43 - reset token is single-use and changes the local password
+  ---
+  duration_ms: 806.162521
+  type: 'test'
+  ...
+# Subtest: reset token expires
+ok 44 - reset token expires
+  ---
+  duration_ms: 321.849954
+  type: 'test'
+  ...
+# Subtest: event editor rejects unsafe URL, invalid dates and invalid coordinates
+ok 45 - event editor rejects unsafe URL, invalid dates and invalid coordinates
+  ---
+  duration_ms: 642.894473
+  type: 'test'
+  ...
+# Subtest: feedback can be submitted as visitor and resolved by admin
+ok 46 - feedback can be submitted as visitor and resolved by admin
+  ---
+  duration_ms: 482.96917
+  type: 'test'
+  ...
+# Subtest: local FAQ edits persist through repository reload
+ok 47 - local FAQ edits persist through repository reload
+  ---
+  duration_ms: 483.499634
+  type: 'test'
+  ...
+# Subtest: corrupt demo storage recovers to seed data
+ok 48 - corrupt demo storage recovers to seed data
+  ---
+  duration_ms: 161.204836
+  type: 'test'
+  ...
+# Subtest: unavailable storage returns a user-readable error
+ok 49 - unavailable storage returns a user-readable error
+  ---
+  duration_ms: 321.385635
+  type: 'test'
+  ...
+1..49
+# tests 49
+# suites 0
+# pass 49
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 10173.012251

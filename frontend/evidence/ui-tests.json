@@ -1,0 +1,110 @@
+{
+  "mode": "Chromium UI integration harness: memory navigation/storage; simulated GPS",
+  "browser": "144.0.7559.96",
+  "test_groups": [
+    {
+      "name": "Landing page and sitemap",
+      "status": "pass",
+      "seconds": 0.34
+    },
+    {
+      "name": "Search, filters, sorting, paging and empty states",
+      "status": "pass",
+      "seconds": 1.33
+    },
+    {
+      "name": "Visitor route gates",
+      "status": "pass",
+      "seconds": 0.23
+    },
+    {
+      "name": "Demo member login",
+      "status": "pass",
+      "seconds": 1.31
+    },
+    {
+      "name": "Bookmark, private note and rating",
+      "status": "pass",
+      "seconds": 1.73
+    },
+    {
+      "name": "Member cannot open admin",
+      "status": "pass",
+      "seconds": 0.11
+    },
+    {
+      "name": "Profile preferences and discovery passport",
+      "status": "pass",
+      "seconds": 0.89
+    },
+    {
+      "name": "Fan submission remains pending and private",
+      "status": "pass",
+      "seconds": 0.69
+    },
+    {
+      "name": "Admin moderation publishes fan story",
+      "status": "pass",
+      "seconds": 1.21
+    },
+    {
+      "name": "Admin content create/edit/delete",
+      "status": "pass",
+      "seconds": 1.63
+    },
+    {
+      "name": "Admin category create/delete",
+      "status": "pass",
+      "seconds": 1.07
+    },
+    {
+      "name": "Feedback submission and resolution",
+      "status": "pass",
+      "seconds": 1.02
+    },
+    {
+      "name": "Events, calendar, consent and simulated geolocation states",
+      "status": "pass",
+      "seconds": 1.32
+    },
+    {
+      "name": "Local media, gallery and spoiler reveal",
+      "status": "pass",
+      "seconds": 0.72
+    },
+    {
+      "name": "Source-backed local assistant and clear history",
+      "status": "pass",
+      "seconds": 3.04
+    },
+    {
+      "name": "Admin overview evidence",
+      "status": "pass",
+      "seconds": 0.2
+    },
+    {
+      "name": "60 responsive route checks plus dark/large text",
+      "status": "pass",
+      "seconds": 9.15
+    },
+    {
+      "name": "Global keyboard search",
+      "status": "pass",
+      "seconds": 0.12
+    },
+    {
+      "name": "Remaining routes and runtime errors",
+      "status": "pass",
+      "seconds": 1.46
+    }
+  ],
+  "uncaught_runtime_errors": [],
+  "console_errors": [
+    "Unsafe attempt to load URL http://127.0.0.1:4173/media/portal.vtt from frame with URL about:blank. Domains, protocols and ports must match.\n"
+  ],
+  "limitations": [
+    "No cross-browser certification",
+    "No live backend/auth/email/LLM",
+    "Online map rendering and native calendar import not validated"
+  ]
+}

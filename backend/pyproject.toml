@@ -1,0 +1,8 @@
+[project]
+name = "fan-hub-plus-backend"
+version = "0.2.0"
+requires-python = ">=3.11"
+description = "Flask backend development scaffold for Fan Hub Plus"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,45 @@
+# LOCAL development scaffold, not tested in Docker here and not production configuration.
+services:
+  db:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: fanhub
+      MYSQL_USER: fanhub
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 25
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  backend:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.backend
+    environment:
+      APP_ENV: development
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY}
+      DATABASE_URL: mysql+pymysql://fanhub:${MYSQL_PASSWORD}@db:3306/fanhub?charset=utf8mb4
+      RATELIMIT_STORAGE_URI: redis://redis:6379/0
+      PUBLIC_BASE_URL: http://127.0.0.1:5000
+      TRUSTED_HOSTS: localhost,127.0.0.1
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:5000:5000"
+    command: ["sh", "-c", "python -m alembic upgrade head && exec waitress-serve --host 0.0.0.0 --port 5000 --threads 4 wsgi:app"]
+volumes:
+  mysql_data:

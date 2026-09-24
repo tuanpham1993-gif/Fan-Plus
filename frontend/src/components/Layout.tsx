@@ -1,0 +1,37 @@
+import React, { useEffect, useState } from 'react';
+import { Link, navigate, useLocation } from '../lib/router';
+import { useApp } from '../lib/store';
+import { repository } from '../services/repository';
+import { Icon, Button, Modal } from './ui';
+
+export function Logo() {
+  return <Link to="/" className="brand" aria-label="Fan Hub Plus home"><span className="wordmark">fan hub<span className="wordmark-plus">+</span></span><span className="wordmark-caption">CULTURE & COMMUNITY</span></Link>;
+}
+const nav = [['/', 'Journal'], ['/explore', 'Explore'], ['/events', 'Events'], ['/showcase', 'Showcase']];
+export default function Layout({ children }: { children: React.ReactNode }) {
+  const { pathname } = useLocation();
+  const { user, db, theme, toggleTheme, fontScale, setFontScale, spoilerSafe, toggleSpoilers, notices, perform } = useApp();
+  const [menu, setMenu] = useState(false), [search, setSearch] = useState(false), [q, setQ] = useState('');
+  useEffect(() => { setMenu(false); document.getElementById('main')?.focus({ preventScroll: true }); window.scrollTo({ top: 0, behavior: 'instant' }); }, [pathname]);
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setSearch(s => !s); } };
+    window.addEventListener('keydown', key); return () => window.removeEventListener('keydown', key);
+  }, []);
+  const navLinks = nav.map(([to, label]) => <Link key={to} to={to} aria-current={pathname === to ? 'page' : undefined} className={pathname === to ? 'active' : ''}>{label}</Link>);
+  return <>
+    <a className="skip-link" href="#main">Skip to content</a>
+    <div className="edition-bar"><span>FAN HUB PLUS / INTERACTIVE PROTOTYPE</span><Link to="/privacy">Original demo content <Icon name="arrow" size={12}/></Link></div>
+    <header className="site-header"><div className="header-inner"><Logo/><nav className="desktop-nav" aria-label="Main navigation">{navLinks}</nav><div className="header-tools">
+      <button className="search-trigger" onClick={() => setSearch(true)} aria-label="Search all worlds"><Icon name="search" size={18}/><span>Search</span><kbd>Ctrl K</kbd></button>
+      <button className="icon-btn theme-toggle" onClick={toggleTheme} aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}><Icon name="contrast"/></button>
+      <details className="preferences"><summary className="icon-btn reading-trigger" aria-label="Reading preferences">Aa</summary><div className="preferences-panel"><strong>Reading preferences</strong><label>Text size<select value={fontScale} onChange={e => setFontScale(Number(e.target.value))}><option value={1}>100% - Default</option><option value={1.125}>112.5% - Large</option><option value={1.25}>125% - Larger</option></select></label><label className="check-row"><input type="checkbox" checked={spoilerSafe} onChange={toggleSpoilers}/>Spoiler-safe reading</label><small>Preferences are saved on this device.</small></div></details>
+      {user ? <details className="preferences account-menu"><summary className="avatar" aria-label="Account menu">{user.avatar ? <img src={user.avatar} alt=""/> : user.name.slice(0, 2).toUpperCase()}</summary><div className="preferences-panel account-links"><strong>{user.name}</strong><Link to="/dashboard">Dashboard</Link><Link to="/collection">My collection</Link><Link to="/profile">Profile</Link>{user.role === 'admin' && <Link to="/admin">Editorial workspace</Link>}<Button variant="secondary" onClick={async () => { await perform(() => repository.logout()); navigate('/'); }}>Sign out</Button></div></details> : <Link to="/login" className="btn btn-small btn-primary desktop-signin">Sign in <Icon name="arrow" size={15}/></Link>}
+      <button className="icon-btn mobile-menu-button" onClick={() => setMenu(true)} aria-label="Open navigation"><Icon name="menu"/></button>
+    </div></div></header>
+    <main id="main" className="main-container" tabIndex={-1}>{children}</main>
+    <footer className="site-footer"><div className="footer-top"><div className="footer-brand"><Logo/><p>A journal for your interests.<br/>A place for your people.</p><span className="footer-caption">Eight categories. Many perspectives.</span></div><div><h2>READ & DISCOVER</h2><Link to="/explore">All stories</Link><Link to="/characters">Characters</Link><Link to="/media">Film & audio</Link><Link to="/events">Events & calendar</Link><Link to="/releases">Upcoming releases</Link></div><div><h2>PARTICIPATE</h2><Link to="/dashboard">Dashboard</Link><Link to="/collection">My collection</Link><Link to="/submit">Submit a story</Link><Link to="/feedback">Send feedback</Link></div><div><h2>INFORMATION</h2><Link to="/assistant">Discovery assistant</Link><Link to="/sitemap">Sitemap</Link><Link to="/privacy">Privacy & demo notes</Link><Link to="/admin">Editorial workspace</Link></div></div><div className="footer-bottom"><span>Fan Hub Plus / Development edition / 2026</span><span>Local data preview. Showcase only; no checkout.</span></div></footer>
+    <div className="toast-stack" aria-live="polite">{notices.map(n => <div key={n.id} role={n.kind === 'error' ? 'alert' : 'status'} className={`toast toast-${n.kind}`}><Icon name={n.kind === 'error' ? 'info' : 'check'} size={19}/>{n.message}</div>)}</div>
+    <Modal open={menu} onClose={() => setMenu(false)} title="Browse Fan Hub Plus"><nav className="mobile-nav" aria-label="Mobile navigation">{navLinks}<Link to="/media">Film & audio</Link><Link to="/characters">Characters</Link><Link to="/dashboard">Dashboard</Link><Link to="/collection">My collection</Link><Link to="/profile">Profile & preferences</Link><div className="mobile-reading"><strong>Reading preferences</strong><label className="field"><span>Mobile text size</span><select value={fontScale} onChange={e => setFontScale(Number(e.target.value))}><option value={1}>100% - Default</option><option value={1.125}>112.5% - Large</option><option value={1.25}>125% - Larger</option></select></label><Button variant="secondary" onClick={toggleTheme}>Use {theme === 'dark' ? 'light' : 'dark'} theme <Icon name="contrast" size={17}/></Button><label className="check-row"><input type="checkbox" checked={spoilerSafe} onChange={toggleSpoilers}/>Spoiler-safe reading</label></div>{user?.role === 'admin' && <Link to="/admin">Editorial workspace</Link>}{user ? <Button variant="secondary" onClick={async () => { await perform(() => repository.logout()); setMenu(false); navigate('/'); }}>Sign out <Icon name="logout" size={17}/></Button> : <Link className="btn btn-primary" to="/login">Sign in</Link>}</nav></Modal>
+    <Modal open={search} onClose={() => setSearch(false)} title="Search the journal"><form onSubmit={e => { e.preventDefault(); setSearch(false); navigate('/explore?q=' + encodeURIComponent(q.trim())); }}><label className="sr-only" htmlFor="global-search">Search all content</label><div className="search-box"><Icon name="search"/><input autoFocus id="global-search" value={q} onChange={e => setQ(e.target.value)} placeholder="Stories, fandoms, characters..."/><button type="submit" className="icon-btn" aria-label="Search"><Icon name="arrow"/></button></div></form><p className="subtle-label">BROWSE BY CATEGORY</p><div className="chip-list">{db?.categories.map(c => <button key={c.id} className="chip" onClick={() => { setSearch(false); navigate('/explore?category=' + c.id); }}>{c.name}</button>)}</div></Modal>
+  </>;
+}

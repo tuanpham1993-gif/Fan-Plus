@@ -1,0 +1,2 @@
+PASS: strict tsc --noEmit for src/domain/*.ts and src/services/*.ts, target ES2022, DOM libraries.
+Full React component semantic checking and npm/Vite production build remain unexecuted.

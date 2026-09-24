@@ -1,0 +1,1 @@
+Portable build: 21 modules transpiled into dist/. Semantic type-checking is a separate npm run build step.

@@ -1,0 +1,79 @@
+PASS Landing page and sitemap
+PASS Search, filters, sorting, paging and empty states
+PASS Visitor route gates
+PASS Demo member login
+PASS Bookmark, private note and rating
+PASS Member cannot open admin
+PASS Profile preferences and discovery passport
+PASS Fan submission remains pending and private
+PASS Admin moderation publishes fan story
+PASS Admin content create/edit/delete
+PASS Admin category create/delete
+PASS Feedback submission and resolution
+PASS Events, calendar, consent and simulated geolocation states
+PASS Local media, gallery and spoiler reveal
+PASS Source-backed local assistant and clear history
+PASS Admin overview evidence
+LAYOUT 1440 /
+LAYOUT 1440 /explore
+LAYOUT 1440 /content/c01
+LAYOUT 1440 /events
+LAYOUT 1440 /showcase
+LAYOUT 1440 /releases
+LAYOUT 1440 /dashboard
+LAYOUT 1440 /collection
+LAYOUT 1440 /profile
+LAYOUT 1440 /submit
+LAYOUT 1440 /feedback
+LAYOUT 1440 /admin
+LAYOUT 1440 /assistant
+LAYOUT 1440 /login
+LAYOUT 1440 /sitemap
+LAYOUT 768 /
+LAYOUT 768 /explore
+LAYOUT 768 /content/c01
+LAYOUT 768 /events
+LAYOUT 768 /showcase
+LAYOUT 768 /releases
+LAYOUT 768 /dashboard
+LAYOUT 768 /collection
+LAYOUT 768 /profile
+LAYOUT 768 /submit
+LAYOUT 768 /feedback
+LAYOUT 768 /admin
+LAYOUT 768 /assistant
+LAYOUT 768 /login
+LAYOUT 768 /sitemap
+LAYOUT 390 /
+LAYOUT 390 /explore
+LAYOUT 390 /content/c01
+LAYOUT 390 /events
+LAYOUT 390 /showcase
+LAYOUT 390 /releases
+LAYOUT 390 /dashboard
+LAYOUT 390 /collection
+LAYOUT 390 /profile
+LAYOUT 390 /submit
+LAYOUT 390 /feedback
+LAYOUT 390 /admin
+LAYOUT 390 /assistant
+LAYOUT 390 /login
+LAYOUT 390 /sitemap
+LAYOUT 320 /
+LAYOUT 320 /explore
+LAYOUT 320 /content/c01
+LAYOUT 320 /events
+LAYOUT 320 /showcase
+LAYOUT 320 /releases
+LAYOUT 320 /dashboard
+LAYOUT 320 /collection
+LAYOUT 320 /profile
+LAYOUT 320 /submit
+LAYOUT 320 /feedback
+LAYOUT 320 /admin
+LAYOUT 320 /assistant
+LAYOUT 320 /login
+LAYOUT 320 /sitemap
+PASS 60 responsive route checks plus dark/large text
+PASS Global keyboard search
+PASS Remaining routes and runtime errors
