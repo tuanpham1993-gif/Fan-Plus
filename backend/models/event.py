@@ -1,9 +1,14 @@
 from datetime import datetime, timezone
 from extensions import db
+
+
 class Event(db.Model):
     __tablename__ = "events"
 
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
 
     content_id = db.Column(
         db.Integer,
@@ -37,9 +42,15 @@ class Event(db.Model):
         nullable=False
     )
 
-    end_time = db.Column(db.DateTime)
+    end_time = db.Column(
+        db.DateTime,
+        nullable=True
+    )
 
-    ticket_url = db.Column(db.String(500))
+    register_url = db.Column(
+        db.String(500),
+        nullable=True
+    )
 
     created_at = db.Column(
         db.DateTime,
@@ -54,5 +65,5 @@ class Event(db.Model):
 
     content = db.relationship(
         "Content",
-        back_populates="events"
+        back_populates="event"
     )

@@ -19,13 +19,24 @@ class Content(db.Model):
         nullable=False
     )
 
-    title = db.Column(db.String(255), nullable=False)
-    body = db.Column(db.Text, nullable=False)
-    image_url = db.Column(db.String(500))
+    title = db.Column(
+        db.String(255),
+        nullable=False
+    )
+
+    body = db.Column(
+        db.Text,
+        nullable=False
+    )
+
+    content_type = db.Column(
+        db.Enum("NEWS", "ARTICLE", "EVENT"),
+        nullable=False,
+        default="ARTICLE"
+    )
 
     status = db.Column(
-        Enum("PENDING", "DONE", "REJECTED"),
-        db.String(20),
+        db.Enum("PENDING", "DONE", "REJECTED"),
         nullable=False,
         default="PENDING"
     )
@@ -41,18 +52,3 @@ class Content(db.Model):
         onupdate=lambda: datetime.now(timezone.utc)
     )
     
-    events = db.relationship(
-        "Event",
-        back_populates="content",
-        uselist=False
-    )
-
-    bookmarks = db.relationship(
-        "Bookmark",
-        back_populates="content"
-    )
-
-    reviews = db.relationship(
-        "Review",
-        back_populates="content"
-    )

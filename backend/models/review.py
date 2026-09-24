@@ -24,6 +24,7 @@ class Review(db.Model):
 
     rating = db.Column(
         db.Integer,
+        db.CheckConstraint("rating >= 0 AND rating <= 5"),
         nullable=False
     )
 
