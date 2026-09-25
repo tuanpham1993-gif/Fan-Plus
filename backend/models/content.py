@@ -30,7 +30,7 @@ class Content(db.Model):
     )
 
     content_type = db.Column(
-        db.Enum("NEWS", "ARTICLE", "EVENT"),
+        db.Enum("NEWS", "ARTICLE", "EVENT", "POST"),
         nullable=False,
         default="ARTICLE"
     )
@@ -50,5 +50,11 @@ class Content(db.Model):
         db.DateTime,
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc)
+    )
+
+    reactions = db.relationship(
+        "ContentReaction",
+        back_populates="content",
+        cascade="all, delete-orphan"
     )
     

@@ -1,5 +1,7 @@
 from models.content import Content
 from extensions import db
+from models.contentreaction import ContentReaction
+from sqlalchemy import func, case
 
 def build_content_query(category_id=None, title=None, content_type=None):
     query = Content.query
@@ -36,18 +38,32 @@ def get_content(content_id):
     return Content.query.get(content_id)
 
 def get_contents(
-    category_id=None, title=None, content_type=None,
-    skip=0, limit=20,
-    sort_by="created_at", sort_order="desc"):
-
-    query = build_content_query(category_id=category_id,title=title,content_type=content_type,)
-
+    category_id=None,
+    title=None,
+    content_type=None,
+    skip=0,
+    limit=20,
+    sort_by="created_at",
+    sort_order="desc"
+):
+    query = build_content_query(category_id=category_id,title=title,content_type=content_type)
     total = query.count()
+    query = query.outerjoin(ContentReaction,ContentReaction.content_id == Content.id)
 
-    if sort_by == "created_at":
-        column = Content.created_at
-    else:
+    like_count = func.sum(case((ContentReaction.reaction_type == "LIKE", 1),else_=0))
+
+    dislike_count = func.sum(case((ContentReaction.reaction_type == "DISLIKE", 1),else_=0))
+
+    query = query.add_columns(like_count.label("like_count"),dislike_count.label("dislike_count"))
+
+    query = query.group_by(Content.id)
+        
+    if sort_by == "updated_at":
         column = Content.updated_at
+    elif sort_by == "like":
+        column = like_count
+    else:
+        column = Content.created_at
 
     if sort_order == "desc":
         query = query.order_by(column.desc())
@@ -56,7 +72,8 @@ def get_contents(
 
     contents = query.offset(skip).limit(limit).all()
 
-    return contents, total
+    return total, contents
+    
 
 def create_content(author_id,category_id,title,body,content_type,):
     content = Content(author_id=author_id,category_id=category_id,
