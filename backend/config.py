@@ -12,6 +12,9 @@ class Config:
     JWT_ACCESS_TOKEN_EXPIRES = int(os.getenv('JWT_ACCESS_TOKEN_EXPIRES', 15)) * 60 # converted to seconds
     JWT_REFRESH_TOKEN_EXPIRES = int(os.getenv('JWT_REFRESH_TOKEN_EXPIRES', 7)) * 86400 # converted to seconds
     
+    # Google reCAPTCHA v2 Secret Key
+    RECAPTCHA_SECRET_KEY = os.getenv('RECAPTCHA_SECRET_KEY', '')
+
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # DB credentials from .env
