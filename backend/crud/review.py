@@ -1,7 +1,6 @@
 from models.review import Review
 from extensions import db
 
-
 def get_review(review_id):
     return db.session.get(Review, review_id)
 

@@ -27,7 +27,7 @@ class Character(db.Model):
 
     category_id = db.Column(
         db.Integer,
-        db.ForeignKey("categories.id"),
+        db.ForeignKey("categories.category_id"),
         nullable=False
     )
 
@@ -41,3 +41,13 @@ class Character(db.Model):
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc)
     )
+
+    character_contents = db.relationship(
+        "CharacterContent",
+        back_populates="character",
+        cascade="all, delete-orphan"
+    )
+    category = db.relationship(
+    "Category",
+    back_populates="characters"
+)

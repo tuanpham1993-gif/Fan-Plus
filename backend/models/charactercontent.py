@@ -18,6 +18,22 @@ class CharacterContent(db.Model):
         nullable=False
     )
 
+    character_id = db.Column(
+        db.Integer,
+        db.ForeignKey("characters.id"),
+        nullable=False
+    )
+
+    content = db.relationship(
+        "Content",
+        back_populates="character_contents"
+    )
+
+    character = db.relationship(
+        "Character",
+        back_populates="character_contents"
+    )
+
     __table_args__ = (
         db.UniqueConstraint(
             "content_id",

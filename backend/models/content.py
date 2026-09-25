@@ -15,7 +15,7 @@ class Content(db.Model):
 
     category_id = db.Column(
         db.Integer,
-        db.ForeignKey("categories.id"),
+        db.ForeignKey("categories.category_id"),
         nullable=False
     )
 
@@ -52,9 +52,25 @@ class Content(db.Model):
         onupdate=lambda: datetime.now(timezone.utc)
     )
 
+    reviews = db.relationship("Review", back_populates="content",cascade="all, delete-orphan")
+
     reactions = db.relationship(
         "ContentReaction",
         back_populates="content",
         cascade="all, delete-orphan"
     )
-    
+
+    medias = db.relationship(
+        "ContentMedia",
+        back_populates="content",
+        cascade="all, delete-orphan"
+    )
+
+    character_contents = db.relationship(
+        "CharacterContent",
+        back_populates="content",
+        cascade="all, delete-orphan"
+    )
+
+    bookmarks = db.relationship("Bookmark", back_populates="content")
+    event =  db.relationship("Event", back_populates="content")

@@ -85,7 +85,7 @@ def create_content(author_id,category_id,title,body,content_type,):
 
     return content
 
-def update_content(content_id,category_id=None,title=None,body=None,content_type=None):
+def update_content(content_id,category_id=None,title=None,body=None,content_type=None, status = None):
 
     content = get_content(content_id)
 
@@ -103,6 +103,9 @@ def update_content(content_id,category_id=None,title=None,body=None,content_type
 
     if content_type is not None:
         content.content_type = content_type
+
+    if  status is not None:
+        content.status = status
 
     db.session.commit()
     db.session.refresh(content)
