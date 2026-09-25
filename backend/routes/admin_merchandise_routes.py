@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify, request
 from crud import merchandise_crud
 from schema.merchandise_schema import validate_merchandise_data
 from schema.character import validate_image_file
+from services.media import save_file
 
 admin_merchandise_bp = Blueprint('admin_merchandise_bp', __name__)
 
@@ -30,15 +31,20 @@ def create_merchandise():
         data = {}
 
     file_obj = request.files.get('image') or request.files.get('image_url')
-    if file_obj:
+    if file_obj and file_obj.filename:
         valid, err = validate_image_file(file_obj)
         if not valid:
             return jsonify({"success": False, "error": err}), 400
-        data['image_url'] = f"/static/uploads/{file_obj.filename}"
 
     errors = validate_merchandise_data(data, is_update=False)
     if errors:
         return jsonify({"success": False, "error": errors[0]}), 400
+
+    if file_obj and file_obj.filename:
+        try:
+            data['image_url'] = save_file(file_obj, "merchandise", data["category_id"])
+        except (OSError, ValueError):
+            return jsonify({"success": False, "error": "Could not save uploaded image."}), 500
 
     item, err_msg, status_code = merchandise_crud.create_merchandise(data)
     if err_msg:
@@ -56,15 +62,24 @@ def update_merchandise(id):
         data = {}
 
     file_obj = request.files.get('image') or request.files.get('image_url')
-    if file_obj:
+    if file_obj and file_obj.filename:
         valid, err = validate_image_file(file_obj)
         if not valid:
             return jsonify({"success": False, "error": err}), 400
-        data['image_url'] = f"/static/uploads/{file_obj.filename}"
 
     errors = validate_merchandise_data(data, is_update=True)
     if errors:
         return jsonify({"success": False, "error": errors[0]}), 400
+
+    if file_obj and file_obj.filename:
+        existing_item = merchandise_crud.get_merchandise_by_id(id)
+        if existing_item is None:
+            return jsonify({"success": False, "error": "Merchandise not found."}), 404
+        category_id = data.get("category_id") or existing_item.category_id
+        try:
+            data['image_url'] = save_file(file_obj, "merchandise", category_id)
+        except (OSError, ValueError):
+            return jsonify({"success": False, "error": "Could not save uploaded image."}), 500
 
     item, err_msg, status_code = merchandise_crud.update_merchandise(id, data)
     if err_msg:

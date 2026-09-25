@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request
 from crud import character_crud
-from schema.character import validate_character_data, validate_image_file, validate_image_url
+from schema.character import validate_character_data, validate_image_file
+from services.media import save_file
 
 admin_character_bp = Blueprint('admin_character_bp', __name__)
 
@@ -30,15 +31,20 @@ def create_character():
 
     # Check uploaded file if any
     file_obj = request.files.get('image') or request.files.get('image_url')
-    if file_obj:
+    if file_obj and file_obj.filename:
         valid, err = validate_image_file(file_obj)
         if not valid:
             return jsonify({"success": False, "error": err}), 400
-        data['image_url'] = f"/static/uploads/{file_obj.filename}"
 
     errors = validate_character_data(data, is_update=False)
     if errors:
         return jsonify({"success": False, "error": errors[0]}), 400
+
+    if file_obj and file_obj.filename:
+        try:
+            data['image_url'] = save_file(file_obj, "characters", data["category_id"])
+        except (OSError, ValueError):
+            return jsonify({"success": False, "error": "Could not save uploaded image."}), 500
 
     character, err_msg, status_code = character_crud.create_character(data)
     if err_msg:
@@ -56,15 +62,24 @@ def update_character(id):
         data = {}
 
     file_obj = request.files.get('image') or request.files.get('image_url')
-    if file_obj:
+    if file_obj and file_obj.filename:
         valid, err = validate_image_file(file_obj)
         if not valid:
             return jsonify({"success": False, "error": err}), 400
-        data['image_url'] = f"/static/uploads/{file_obj.filename}"
 
     errors = validate_character_data(data, is_update=True)
     if errors:
         return jsonify({"success": False, "error": errors[0]}), 400
+
+    if file_obj and file_obj.filename:
+        existing_character = character_crud.get_character_by_id(id)
+        if existing_character is None:
+            return jsonify({"success": False, "error": "Character not found."}), 404
+        category_id = data.get("category_id") or existing_character.category_id
+        try:
+            data['image_url'] = save_file(file_obj, "characters", category_id)
+        except (OSError, ValueError):
+            return jsonify({"success": False, "error": "Could not save uploaded image."}), 500
 
     character, err_msg, status_code = character_crud.update_character(id, data)
     if err_msg:
