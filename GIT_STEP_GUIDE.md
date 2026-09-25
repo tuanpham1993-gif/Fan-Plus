@@ -15,6 +15,10 @@ Tài liệu này hướng dẫn cách thực hiện `git add` và `git commit` t
 | **STEP 10-11**| `feat(step10-11): implement user profile and feedback routes` | `backend/routes/user_routes.py`, `backend/routes/feedback_routes.py`, `backend/routes/__init__.py` |
 | **STEP 12** | `test(step12): add pytest automated test suite for auth, user, and feedback` | `backend/tests/test_auth.py`, `backend/tests/test_user.py`, `backend/tests/test_feedback.py`, `backend/tests/__init__.py` |
 | **STEP 13-14**| `docs(step13-14): update README, security checklist, and step-by-step git guide` | `README.md`, `backend/README.md`, `GIT_STEP_GUIDE.md` |
+| **STEP 24** | `feat(step24): add RECAPTCHA_SECRET_KEY environment configuration` | `backend/.env.example`, `backend/config.py` |
+| **STEP 27** | `feat(step27): add google recaptcha verification utility service` | `backend/utils/recaptcha_utils.py` |
+| **STEP 25-26**| `feat(step25-26): implement recaptcha verification on register and login endpoints` | `backend/routes/auth_routes.py`, `backend/tests/` |
+| **STEP 28-29**| `docs(step28-29): update recaptcha security checklist and step guide` | `README.md`, `GIT_STEP_GUIDE.md` |
 
 ---
 
@@ -56,24 +60,23 @@ git add backend/tests/
 git commit -m "test(step12): add pytest automated test suite for auth, user, and feedback"
 ```
 
-### 🔹 BƯỚC 7: Commit Tài Liệu Hướng Dẫn & Security Checklist (STEP 13 & STEP 14)
+### 🔹 BƯỚC 7: Commit Google reCAPTCHA Configuration & Verification (STEP 24 - STEP 27)
 ```bash
-git add README.md backend/README.md GIT_STEP_GUIDE.md
-git commit -m "docs(step13-14): update README, security checklist, and step-by-step git guide"
+git add backend/.env.example backend/config.py backend/utils/recaptcha_utils.py backend/routes/auth_routes.py backend/tests/
+git commit -m "feat(step25-27): implement google recaptcha v2 server-to-server verification"
+```
+
+### 🔹 BƯỚC 8: Commit Tài Liệu Hướng Dẫn & Security Checklist (STEP 28 & STEP 29)
+```bash
+git add README.md GIT_STEP_GUIDE.md
+git commit -m "docs(step28-29): update recaptcha security checklist and step guide"
 ```
 
 ---
 
 ## 🚀 ĐẨY TOÀN BỘ CÁC COMMITS LÊN GITHUB SERVER
 
-Sau khi đã commit đầy đủ theo từng step ở trên, bạn chỉ cần gõ lệnh:
-
 ```bash
-# Đẩy lên nhánh phát triển chung develop
-git push origin develop
-```
-
-Hoặc nếu muốn tạo nhánh mới trên remote:
-```bash
-git push -u origin develop
+# Đẩy nhánh captcha cá nhân lên remote
+git push origin tuan/feature-captcha
 ```
