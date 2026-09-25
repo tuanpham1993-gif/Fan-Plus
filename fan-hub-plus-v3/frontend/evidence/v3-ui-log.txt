@@ -1,0 +1,13 @@
+PASS Retained discovery homepage and new navigation
+PASS Community filtering, actual counts and sample disclosure
+PASS Guest cannot write without signing in
+PASS Member creates a draft and submits to moderation
+PASS Administrator publishes reviewed post into the feed
+PASS Like and love replace each other without inflating counts
+PASS Comments, one-level replies, HTML rendered as text
+PASS Lore drawer answers sample question, shows source, closes with Escape
+PASS Full Lore workspace preserves history, abstains, clears, opens actual source
+PASS Quarterly prizes and explicit, free member entry
+PASS Frozen snapshot, single saved draw, no reroll, verifiable record
+PASS 25 responsive page/viewport combinations and mobile chat
+PASS Light-theme view and no uncaught browser errors

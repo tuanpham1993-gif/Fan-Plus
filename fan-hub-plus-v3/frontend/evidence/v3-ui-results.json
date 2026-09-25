@@ -1,0 +1,219 @@
+{
+  "mode": "managed-browser harness; injected navigation, storage and test-only crypto adapter",
+  "tests": [
+    {
+      "name": "Retained discovery homepage and new navigation",
+      "status": "pass",
+      "seconds": 0.25
+    },
+    {
+      "name": "Community filtering, actual counts and sample disclosure",
+      "status": "pass",
+      "seconds": 0.71
+    },
+    {
+      "name": "Guest cannot write without signing in",
+      "status": "pass",
+      "seconds": 0.39
+    },
+    {
+      "name": "Member creates a draft and submits to moderation",
+      "status": "pass",
+      "seconds": 1.59
+    },
+    {
+      "name": "Administrator publishes reviewed post into the feed",
+      "status": "pass",
+      "seconds": 1.44
+    },
+    {
+      "name": "Like and love replace each other without inflating counts",
+      "status": "pass",
+      "seconds": 1.36
+    },
+    {
+      "name": "Comments, one-level replies, HTML rendered as text",
+      "status": "pass",
+      "seconds": 0.19
+    },
+    {
+      "name": "Lore drawer answers sample question, shows source, closes with Escape",
+      "status": "pass",
+      "seconds": 1.13
+    },
+    {
+      "name": "Full Lore workspace preserves history, abstains, clears, opens actual source",
+      "status": "pass",
+      "seconds": 2.69
+    },
+    {
+      "name": "Quarterly prizes and explicit, free member entry",
+      "status": "pass",
+      "seconds": 0.75
+    },
+    {
+      "name": "Frozen snapshot, single saved draw, no reroll, verifiable record",
+      "status": "pass",
+      "seconds": 1.96
+    },
+    {
+      "name": "25 responsive page/viewport combinations and mobile chat",
+      "status": "pass",
+      "seconds": 8.72
+    },
+    {
+      "name": "Light-theme view and no uncaught browser errors",
+      "status": "pass",
+      "seconds": 1.69
+    }
+  ],
+  "responsive": [
+    {
+      "width": 320,
+      "route": "/",
+      "overflow": false
+    },
+    {
+      "width": 320,
+      "route": "/community",
+      "overflow": false
+    },
+    {
+      "width": 320,
+      "route": "/giveaways",
+      "overflow": false
+    },
+    {
+      "width": 320,
+      "route": "/assistant",
+      "overflow": false
+    },
+    {
+      "width": 320,
+      "route": "/explore",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "route": "/",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "route": "/community",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "route": "/giveaways",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "route": "/assistant",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "route": "/explore",
+      "overflow": false
+    },
+    {
+      "width": 768,
+      "route": "/",
+      "overflow": false
+    },
+    {
+      "width": 768,
+      "route": "/community",
+      "overflow": false
+    },
+    {
+      "width": 768,
+      "route": "/giveaways",
+      "overflow": false
+    },
+    {
+      "width": 768,
+      "route": "/assistant",
+      "overflow": false
+    },
+    {
+      "width": 768,
+      "route": "/explore",
+      "overflow": false
+    },
+    {
+      "width": 1024,
+      "route": "/",
+      "overflow": false
+    },
+    {
+      "width": 1024,
+      "route": "/community",
+      "overflow": false
+    },
+    {
+      "width": 1024,
+      "route": "/giveaways",
+      "overflow": false
+    },
+    {
+      "width": 1024,
+      "route": "/assistant",
+      "overflow": false
+    },
+    {
+      "width": 1024,
+      "route": "/explore",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "route": "/",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "route": "/community",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "route": "/giveaways",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "route": "/assistant",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "route": "/explore",
+      "overflow": false
+    },
+    {
+      "width": 320,
+      "font": 1.25,
+      "theme": "light",
+      "route": "/community",
+      "overflow": false
+    },
+    {
+      "width": 320,
+      "font": 1.25,
+      "theme": "light",
+      "route": "/giveaways",
+      "overflow": false
+    },
+    {
+      "width": 320,
+      "font": 1.25,
+      "theme": "light",
+      "route": "/assistant",
+      "overflow": false
+    }
+  ],
+  "pageErrors": []
+}

@@ -1,0 +1,1 @@
+PASS: strict semantic check for V3 types, seed, demo, HTTP and gateway (not React TSX).
