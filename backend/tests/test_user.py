@@ -2,6 +2,8 @@ import pytest
 from app import create_app
 from extensions import db
 
+TEST_CAPTCHA = "PASSED_TEST_TOKEN"
+
 @pytest.fixture
 def client():
     app = create_app()
@@ -19,11 +21,13 @@ def test_get_profile_authenticated(client):
     client.post('/api/auth/register', json={
         'name': 'Profile User',
         'email': 'profile@gmail.com',
-        'password': 'Password123@'
+        'password': 'Password123@',
+        'captcha_token': TEST_CAPTCHA
     })
     login_res = client.post('/api/auth/login', json={
         'email': 'profile@gmail.com',
-        'password': 'Password123@'
+        'password': 'Password123@',
+        'captcha_token': TEST_CAPTCHA
     })
     token = login_res.json['access_token']
 
@@ -39,11 +43,13 @@ def test_update_profile(client):
     client.post('/api/auth/register', json={
         'name': 'Old Name',
         'email': 'update@gmail.com',
-        'password': 'Password123@'
+        'password': 'Password123@',
+        'captcha_token': TEST_CAPTCHA
     })
     login_res = client.post('/api/auth/login', json={
         'email': 'update@gmail.com',
-        'password': 'Password123@'
+        'password': 'Password123@',
+        'captcha_token': TEST_CAPTCHA
     })
     token = login_res.json['access_token']
 
