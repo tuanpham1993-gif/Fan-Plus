@@ -31,6 +31,7 @@ const groups = [
         links: [
             ["/assistant", "Lore Master workspace"],
             ["/feedback", "Feedback and FAQs"],
+            ["/terms", "Terms of service"],
             ["/privacy", "Demo privacy information"],
             ["/login", "Sign in"],
             ["/register", "Register"],
@@ -66,6 +67,24 @@ export default function Utility({ mode }) {
             React.createElement("section", { className: "panel" },
                 React.createElement("h2", null, "Browse by category"),
                 React.createElement("div", { className: "tag-list" }, db?.categories.map((c) => (React.createElement(Link, { to: "/explore?category=" + c.id, key: c.id, className: "tag" }, c.name)))))));
+    if (mode === "terms")
+        return (React.createElement(React.Fragment, null,
+            React.createElement(Crumbs, { items: [{ label: "Terms of service" }] }),
+            React.createElement(PageHeading, { eyebrow: "WHAT YOU AGREE TO", title: "Community terms of service.", description: "The rules every member accepts when creating an account or posting in the community." }),
+            React.createElement("article", { className: "panel prose" },
+                React.createElement("h2", null, "1. Your account"),
+                React.createElement("p", null, "You must provide a real, working email address you control. Disposable or throwaway addresses are rejected, and the address must be verified with a one-time code before you can post, comment, react or enter a giveaway. You are responsible for activity under your account."),
+                React.createElement("h2", null, "2. Community content"),
+                React.createElement("p", null, "Posts, comments and media must be your own words or something you have the right to share. Content must not include sensitive, explicit, non-consensual or illegal imagery; posts containing flagged keywords are rejected automatically and may be reviewed by an administrator. Reviews and ratings must reflect a genuine perspective, not repeated or filler text used only to unlock a rating."),
+                React.createElement("h2", null, "3. Moderation"),
+                React.createElement("p", null, "New posts are reviewed before publication. Any member may report a post or comment; an administrator decides whether to hide it. Repeat or severe violations may lead to account suspension."),
+                React.createElement("h2", null, "4. Quarterly gifts (demo)"),
+                React.createElement("p", null, "The giveaway module in this kit is illustrative only. No purchase is necessary, no real prizes are shipped, and entries are recorded for demonstration purposes."),
+                React.createElement("h2", null, "5. Changes"),
+                React.createElement("p", null,
+                    "These terms may change as the product evolves. Continued use of the community after a change constitutes acceptance of the update. See also our ",
+                    React.createElement(Link, { to: "/privacy" }, "privacy information"),
+                    "."))));
     if (mode === "privacy")
         return (React.createElement(React.Fragment, null,
             React.createElement(Crumbs, { items: [{ label: "Demo privacy" }] }),

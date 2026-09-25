@@ -13,18 +13,49 @@ import { gateway } from "./gateway";
 import { normalize } from "./demo";
 import { serverMode } from "./http";
 import { openLore } from "./Lore";
-import type { Post, PostInput, SocialData, Topic, Comment } from "./types";
-const topicNames = { anime: "Anime", movies: "Movies", music: "Music" };
-const images = {
+import type {
+  Post,
+  PostFormat,
+  PostInput,
+  SocialData,
+  Topic,
+  Comment,
+} from "./types";
+const topicNames: Record<Topic, string> = {
+  soundtrack: "Soundtrack",
+  anime: "Anime",
+  gaming: "Gaming",
+  movies: "Movies",
+  tv: "TV Shows",
+  kpop: "K-pop",
+  comic: "Comic",
+  manga: "Manga",
+  cosplay: "Cosplay",
+};
+const topicOptions = Object.entries(topicNames) as [Topic, string][];
+const formatNames: Record<PostFormat, string> = {
+  post: "Post",
+  video: "Video",
+  soundtrack: "Soundtrack",
+};
+const images: Record<Topic, string> = {
+  soundtrack: "/art/kpop.svg",
   anime: "/art/anime.svg",
+  gaming: "/art/gaming.svg",
   movies: "/art/movies.svg",
-  music: "/art/kpop.svg",
+  tv: "/art/tv.svg",
+  kpop: "/art/kpop.svg",
+  comic: "/art/comics.svg",
+  manga: "/art/manga.svg",
+  cosplay: "/art/cosplay.svg",
 };
 const blank: PostInput = {
   title: "",
   subject: "",
   body: "",
   topic: "anime",
+  format: "post",
+  mediaUrl: "",
   spoiler: false,
   rating: 0,
 };
@@ -50,7 +81,13 @@ export default function Community() {
   const [data, setData] = useState<SocialData | null>(null),
     [error, setError] = useState(""),
     [topic, setTopic] = useState(""),
-    [tab, setTab] = useState("latest"),
+    [tab, setTab] = useState(() =>
+      user?.role === "admin" && params.get("view") === "review"
+        ? "review"
+        : user?.role === "admin" && params.get("view") === "reports"
+          ? "reports"
+          : "latest",
+    ),
     [q, setQ] = useState(""),
     [limit, setLimit] = useState(6),
     [editor, setEditor] = useState(false),
@@ -136,8 +173,8 @@ export default function Community() {
             <em>Let's talk about them.</em>
           </h1>
           <p>
-            Your film reviews, anime theories and songs on repeat.
-            <br />A little more conversation. A little less noise.
+            Reviews, videos, soundtracks, theories and fan-made perspectives.
+            <br />Anime, games, film, TV, K-pop, comics, manga and cosplay.
           </p>
         </div>
         <div className="community-intro-note">
@@ -153,9 +190,7 @@ export default function Community() {
         <div className="topic-chips" aria-label="Filter community topics">
           {[
             ["", "All conversations"],
-            ["anime", "Anime"],
-            ["movies", "Movies"],
-            ["music", "Music"],
+            ...topicOptions,
           ].map(([id, name]) => (
             <button
               key={id}
@@ -266,15 +301,26 @@ export default function Community() {
               {data?.reports
                 .filter((r) => !r.resolved)
                 .map((r) => (
-                  <article className="post-card" key={r.id}>
+                  <article className="post-card report-card" key={r.id}>
                     <span className="eyebrow">
                       {r.commentId ? "COMMENT REPORT" : "POST REPORT"}
+                      {" / "}
+                      {time(r.createdAt)}
                     </span>
-                    <h2>
-                      {data.posts.find((p) => p.id === r.postId)?.title ||
-                        "Unavailable post"}
-                    </h2>
-                    <p>{r.reason}</p>
+                    <h2>{r.postTitle}</h2>
+                    <p className="muted small">
+                      Reported by <strong>{r.reporterName}</strong> / Content
+                      by <strong>{r.authorName}</strong>
+                    </p>
+                    <p>
+                      <strong>Reason: </strong>
+                      {r.reason}
+                    </p>
+                    {r.contentPreview && (
+                      <blockquote className="report-preview preserve-space">
+                        {r.contentPreview}
+                      </blockquote>
+                    )}
                     <div className="post-actions">
                       <Button
                         disabled={busy}
@@ -363,7 +409,7 @@ export default function Community() {
             </h2>
             <p>
               Talk about the work, not the person. Mark spoilers. Give credit.
-              Posts are reviewed before they reach the feed.
+              Member posts and media are reviewed before they reach the feed.
             </p>
             <div className="rail-rule">
               <span>01</span>Be thoughtful, not hurtful.
@@ -421,13 +467,16 @@ export default function Community() {
         onClose={() => setEditor(false)}
         post={editing}
         onSave={async (p) => {
+          const isAdmin = user?.role === "admin";
           const ok = await run(
             () => gateway.post(user, p, editing?.id, editing?.version),
-            "Your post is awaiting moderation.",
+            isAdmin
+              ? "Your post is published."
+              : "Your post is awaiting moderation.",
           );
           if (ok) {
             setEditor(false);
-            setTab("mine");
+            setTab(isAdmin ? "latest" : "mine");
           }
           return ok;
         }}
@@ -529,7 +578,9 @@ function PostCard({
     >
       <span className="social-avatar mini">{initials(c.authorName)}</span>
       <div>
-        <strong>{c.authorName}</strong>
+        <Link className="author-link" to={"/community/member/" + c.authorId}>
+          <strong>{c.authorName}</strong>
+        </Link>
         <p className="preserve-space">{c.body}</p>
         <div className="comment-meta">
           <span>{time(c.createdAt)}</span>
@@ -571,10 +622,13 @@ function PostCard({
       <div className="post-author">
         <span className="social-avatar">{initials(p.authorName)}</span>
         <div>
-          <strong>{p.authorName}</strong>
+          <Link className="author-link" to={"/community/member/" + p.authorId}>
+            <strong>{p.authorName}</strong>
+          </Link>
           <span>
             {time(p.createdAt)} <span aria-hidden="true">/</span>{" "}
-            {topicNames[p.topic]} {p.sample && "/ Sample post"}
+            {topicNames[p.topic]} / {formatNames[p.format]}{" "}
+            {p.sample && "/ Sample post"}
           </span>
         </div>
         <div className="post-menu">
@@ -630,6 +684,7 @@ function PostCard({
               {p.rating}/5
             </span>
           )}
+          <span className="post-format-badge">{formatNames[p.format]}</span>
           {p.spoiler && <span className="spoiler-label">Spoiler</span>}
         </div>
         <h2>
@@ -665,6 +720,23 @@ function PostCard({
           </>
         )}
       </div>
+      {!hidden && p.mediaUrl && p.format !== "post" && (
+        <div className={"post-media " + p.format}>
+          <div className="post-media-head">
+            <Icon name={p.format === "video" ? "play" : "music"} size={17} />
+            <span>{p.format === "video" ? "Video attachment" : "Soundtrack attachment"}</span>
+          </div>
+          {p.format === "video" ? (
+            <video controls preload="metadata" playsInline src={p.mediaUrl}>
+              Your browser cannot play this video.
+            </video>
+          ) : (
+            <audio controls preload="metadata" src={p.mediaUrl}>
+              Your browser cannot play this audio.
+            </audio>
+          )}
+        </div>
+      )}
       {p.sample && p.id === "post-city" && !hidden && (
         <div className="post-cover">
           <img
@@ -681,8 +753,8 @@ function PostCard({
         <>
           <div className="post-totals">
             <span>
-              {reactions.length}{" "}
-              {reactions.length === 1 ? "appreciation" : "appreciations"}
+              {reactions.filter((r) => r.kind === "like").length} likes /{" "}
+              {reactions.filter((r) => r.kind === "heart").length} loves
             </span>
             <button onClick={() => setComments(!comments)}>
               {cs.filter((c) => !c.hidden).length} comments
@@ -691,16 +763,22 @@ function PostCard({
           <div className="post-actions">
             <button
               disabled={busy}
-              className={mine === "like" ? "active" : ""}
+              className={"reaction-btn " + (mine === "like" ? "active" : "")}
               aria-pressed={mine === "like"}
               onClick={() => reaction("like")}
             >
-              <Icon name="like" size={19} />
-              Like
+              <Icon
+                name="like"
+                size={19}
+                fill={mine === "like" ? "currentColor" : "none"}
+              />
+              {mine === "like" ? "Liked" : "Like"}
             </button>
             <button
               disabled={busy}
-              className={mine === "heart" ? "active heart" : ""}
+              className={
+                "reaction-btn " + (mine === "heart" ? "active heart" : "")
+              }
               aria-pressed={mine === "heart"}
               onClick={() => reaction("heart")}
             >
@@ -709,7 +787,7 @@ function PostCard({
                 size={19}
                 fill={mine === "heart" ? "currentColor" : "none"}
               />
-              Love
+              {mine === "heart" ? "Loved" : "Love"}
             </button>
             <button
               onClick={() => setComments(!comments)}
@@ -899,6 +977,8 @@ function PostEditor({
         subject: post.subject,
         body: post.body,
         topic: post.topic,
+        format: post.format,
+        mediaUrl: post.mediaUrl,
         spoiler: post.spoiler,
         rating: post.rating,
       });
@@ -910,7 +990,11 @@ function PostEditor({
         saved &&
           typeof saved.title === "string" &&
           typeof saved.body === "string"
-          ? { ...blank, ...saved }
+          ? {
+              ...blank,
+              ...saved,
+              topic: saved.topic === "music" ? "soundtrack" : saved.topic,
+            }
           : blank,
       );
     } catch {
@@ -928,6 +1012,20 @@ function PostEditor({
   function field<K extends keyof PostInput>(k: K, v: PostInput[K]) {
     setForm((f) => ({ ...f, [k]: v }));
   }
+  const bodyWords = new Set(
+    form.body
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((w) => w.toLowerCase()),
+  );
+  const ratingAllowed =
+    form.body.trim().length >= 20 &&
+    bodyWords.size >= 4 &&
+    !/(.)\1{9,}/.test(form.body);
+  useEffect(() => {
+    if (!ratingAllowed && form.rating > 0) field("rating", 0);
+  }, [ratingAllowed]);
   return (
     <Modal
       open={open}
@@ -945,12 +1043,19 @@ function PostEditor({
       {preview ? (
         <article className="editor-preview">
           <span className="eyebrow">
-            {topicNames[form.topic]} / {form.subject || "Your work or topic"}
+            {topicNames[form.topic]} / {formatNames[form.format]} /{" "}
+            {form.subject || "Your work or topic"}
           </span>
           <h2>{form.title || "Your title goes here"}</h2>
           <p className="preserve-space">
             {form.body || "Your perspective will appear here."}
           </p>
+          {form.mediaUrl && form.format === "video" && (
+            <video className="editor-preview-media" controls preload="metadata" src={form.mediaUrl} />
+          )}
+          {form.mediaUrl && form.format === "soundtrack" && (
+            <audio className="editor-preview-media" controls preload="metadata" src={form.mediaUrl} />
+          )}
         </article>
       ) : (
         <form
@@ -979,7 +1084,7 @@ function PostEditor({
                 value={form.topic}
                 onChange={(e) => field("topic", e.target.value as Topic)}
               >
-                {Object.entries(topicNames).map(([k, v]) => (
+                {topicOptions.map(([k, v]) => (
                   <option key={k} value={k}>
                     {v}
                   </option>
@@ -987,16 +1092,48 @@ function PostEditor({
               </select>
             </label>
             <label className="field">
-              <span>Film, anime, song or discussion topic</span>
-              <input
-                value={form.subject}
-                onChange={(e) => field("subject", e.target.value)}
-                required
-                maxLength={100}
-                placeholder="What are we talking about?"
-              />
+              <span>Post type</span>
+              <select
+                value={form.format}
+                onChange={(e) => {
+                  const next = e.target.value as PostFormat;
+                  setForm((f) => ({
+                    ...f,
+                    format: next,
+                    mediaUrl: next === "post" ? "" : f.mediaUrl,
+                  }));
+                }}
+              >
+                <option value="post">Post / discussion</option>
+                <option value="video">Video</option>
+                <option value="soundtrack">Soundtrack / audio</option>
+              </select>
             </label>
           </div>
+          <label className="field">
+            <span>Title, work, character or discussion topic</span>
+            <input
+              value={form.subject}
+              onChange={(e) => field("subject", e.target.value)}
+              required
+              maxLength={100}
+              placeholder="What are we talking about?"
+            />
+          </label>
+          {form.format !== "post" && (
+            <label className="field">
+              <span>{form.format === "video" ? "Video URL" : "Soundtrack URL"}</span>
+              <input
+                type="text"
+                value={form.mediaUrl}
+                onChange={(e) => field("mediaUrl", e.target.value)}
+                required
+                maxLength={500}
+                placeholder={form.format === "video" ? "/media/portal.webm" : "/media/orbit.wav"}
+              />
+              <small>Use a direct HTTPS media URL or a local /media/ path. Embedded HTML is not accepted.</small>
+            </label>
+          )}
           <label className="field">
             <span>Give your perspective a title</span>
             <input
@@ -1028,6 +1165,7 @@ function PostEditor({
               <span>Optional rating</span>
               <select
                 value={form.rating}
+                disabled={!ratingAllowed}
                 onChange={(e) => field("rating", Number(e.target.value))}
               >
                 <option value={0}>No rating</option>
@@ -1037,6 +1175,12 @@ function PostEditor({
                   </option>
                 ))}
               </select>
+              {!ratingAllowed && (
+                <small>
+                  Write a real perspective of at least 20 characters before
+                  rating.
+                </small>
+              )}
             </label>
             <label className="check-row">
               <input
@@ -1054,7 +1198,8 @@ function PostEditor({
               checked={agree}
               onChange={(e) => setAgree(e.target.checked)}
             />
-            These are my own words, and I agree to the community rules.
+            These are my own words, I agree to the community rules, and this
+            post contains no sensitive, explicit or non-consensual imagery.
           </label>
         </form>
       )}
@@ -1063,8 +1208,12 @@ function PostEditor({
           {storageWarning
             ? "Draft storage unavailable. Keep a copy before closing."
             : post
-              ? "Editing sends the post back to moderation."
-              : "Draft saved on this device. A moderator reviews each new post."}
+              ? user?.role === "admin"
+                ? "Administrator edits are published immediately."
+                : "Editing sends the post back to moderation."
+              : user?.role === "admin"
+                ? "Administrator posts are published immediately."
+                : "Draft saved on this device. A moderator reviews each new post."}
         </p>
         <Button
           form="post-editor"
@@ -1072,7 +1221,11 @@ function PostEditor({
           busy={busy}
           disabled={!agree || preview}
         >
-          Send for review
+          {user?.role === "admin"
+            ? post
+              ? "Publish changes"
+              : "Publish now"
+            : "Send for review"}
           <Icon name="arrow" size={16} />
         </Button>
       </div>

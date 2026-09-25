@@ -4,67 +4,67 @@
     {
       "name": "Retained discovery homepage and new navigation",
       "status": "pass",
-      "seconds": 0.25
+      "seconds": 0.28
     },
     {
       "name": "Community filtering, actual counts and sample disclosure",
       "status": "pass",
-      "seconds": 0.71
+      "seconds": 0.75
     },
     {
       "name": "Guest cannot write without signing in",
       "status": "pass",
-      "seconds": 0.39
+      "seconds": 0.4
     },
     {
       "name": "Member creates a draft and submits to moderation",
       "status": "pass",
-      "seconds": 1.59
+      "seconds": 1.67
     },
     {
       "name": "Administrator publishes reviewed post into the feed",
       "status": "pass",
-      "seconds": 1.44
+      "seconds": 2.34
     },
     {
       "name": "Like and love replace each other without inflating counts",
       "status": "pass",
-      "seconds": 1.36
+      "seconds": 1.41
     },
     {
       "name": "Comments, one-level replies, HTML rendered as text",
       "status": "pass",
-      "seconds": 0.19
+      "seconds": 0.2
     },
     {
       "name": "Lore drawer answers sample question, shows source, closes with Escape",
       "status": "pass",
-      "seconds": 1.13
+      "seconds": 1.25
     },
     {
       "name": "Full Lore workspace preserves history, abstains, clears, opens actual source",
       "status": "pass",
-      "seconds": 2.69
+      "seconds": 2.7
     },
     {
       "name": "Quarterly prizes and explicit, free member entry",
       "status": "pass",
-      "seconds": 0.75
+      "seconds": 0.74
     },
     {
       "name": "Frozen snapshot, single saved draw, no reroll, verifiable record",
       "status": "pass",
-      "seconds": 1.96
+      "seconds": 1.97
     },
     {
       "name": "25 responsive page/viewport combinations and mobile chat",
       "status": "pass",
-      "seconds": 8.72
+      "seconds": 8.7
     },
     {
       "name": "Light-theme view and no uncaught browser errors",
       "status": "pass",
-      "seconds": 1.69
+      "seconds": 1.79
     }
   ],
   "responsive": [

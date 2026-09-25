@@ -102,7 +102,9 @@
         "reason": "",
         "version": 1,
         "createdAt": "2026-09-24T03:10:00Z",
-        "sample": true
+        "sample": true,
+        "format": "post",
+        "mediaUrl": ""
       },
       {
         "id": "post-sound",
@@ -111,14 +113,16 @@
         "title": "A soundtrack should leave room for silence.",
         "subject": "Orbit / original demo audio",
         "body": "I have been listening to the short original audio sample in the media room. It made me think about how a soundtrack can support a scene without telling us exactly what to feel.\n\nMy favourite sound design often starts with restraint. A little space between notes, a distant texture, then one clear melodic idea. What soundtrack do you return to when you want to slow down?",
-        "topic": "music",
+        "topic": "soundtrack",
         "spoiler": false,
         "rating": 4,
         "status": "published",
         "reason": "",
         "version": 1,
         "createdAt": "2026-09-23T08:30:00Z",
-        "sample": true
+        "sample": true,
+        "format": "soundtrack",
+        "mediaUrl": "/media/orbit.wav"
       },
       {
         "id": "post-cinema",
@@ -134,7 +138,9 @@
         "reason": "",
         "version": 1,
         "createdAt": "2026-09-22T05:20:00Z",
-        "sample": true
+        "sample": true,
+        "format": "post",
+        "mediaUrl": ""
       }
     ],
     "comments": [

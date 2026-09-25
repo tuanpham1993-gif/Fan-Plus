@@ -648,14 +648,17 @@ export default function Admin() {
               </section>
               <div className="two-column">
                 <section className="panel">
-                  <h2>Review queue</h2>
+                  <h2>Review queues</h2>
                   <p>
-                    {pending.length
-                      ? `${pending.length} community stories need an editorial decision.`
-                      : "You are all caught up. New fan stories will appear here."}
+                    Review catalog story submissions here, and moderate member
+                    conversations, videos and soundtracks in Community.
                   </p>
                   <Link className="text-link" to="/admin?tab=submissions">
-                    Open submissions <Icon name="arrow" size={15} />
+                    Open story submissions <Icon name="arrow" size={15} />
+                  </Link>
+                  <br />
+                  <Link className="text-link" to="/community?view=review">
+                    Open Community moderation <Icon name="arrow" size={15} />
                   </Link>
                 </section>
                 <section className="panel">

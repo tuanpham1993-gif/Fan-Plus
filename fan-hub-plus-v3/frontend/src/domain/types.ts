@@ -56,6 +56,7 @@ export interface User {
   bio: string;
   suspended: boolean;
   avatar?: string;
+  verified?: boolean;
 }
 export interface Bookmark {
   id: string;

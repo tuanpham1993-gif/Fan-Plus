@@ -4,7 +4,7 @@
 
 The top-level navigation adds Community and Quarterly Gifts. Ask Lore is a named button in the header, not a constantly floating ornament. Desktop Lore opens a 460 px right-hand native dialog; the page remains in place behind a dimmed backdrop. Mobile uses the available full height. The separate `/assistant` workspace supports longer reading. Native dialog focus/Escape behavior is retained, and reduced-motion preferences are respected.
 
-Community uses a main reading column and a narrower guidance rail. Under smaller breakpoints the feed becomes one column; secondary cards move below the conversation. Posts are plain text, not arbitrary HTML. SVG icons represent actions, with text and accessible labels. Prize cards use CSS illustrations; no external travel photography or implied sponsorship is used.
+Community uses a main reading column and a narrower guidance rail. Under smaller breakpoints the feed becomes one column; secondary cards move below the conversation. The composer exposes nine editorial categories (Soundtrack, Anime, Gaming, Movies, TV Shows, K-pop, Comic, Manga and Cosplay) and three content types (Post, Video and Soundtrack). Post bodies remain plain text, not arbitrary HTML. Video/audio playback is limited to validated direct HTTPS URLs or local `/media/...` paths; there is no binary upload/transcode pipeline in this revision. SVG icons represent actions, with text and accessible labels. Prize cards use CSS illustrations; no external travel photography or implied sponsorship is used.
 
 The interface language remains English to match the supplied V1. Source notes can be Vietnamese; the optional model is instructed to answer in the current question's language. The frontend does not contain a complete internationalization framework.
 
@@ -39,7 +39,7 @@ Audit rows are ordinary database records in this kit, not tamper-proof external 
 
 ## Social workflow
 
-`pending -> published | rejected`; author edits return to `pending` and increment the version. Moderation requires the expected version and an independent administrator. A conditional database update prevents stale approval. Remove and report-hide are soft hiding operations. Removed comment text is replaced in public responses; existing one-level replies remain attached.
+For member-authored content the state flow is `pending -> published | rejected`; member edits return to `pending` and increment the version. Moderation requires the expected version and an administrator distinct from the member author. A conditional database update prevents stale approval. Admin-authored posts and admin edits are intentionally published immediately, so an administrator never needs to approve their own queue item. Remove and report-hide are soft hiding operations. Removed comment text is replaced in public responses; existing one-level replies remain attached.
 
 Reaction PUT requests are idempotent: another PUT of `like` leaves one like, and `heart` replaces that same user's like. An empty kind removes the reaction. Users do not acquire additional giveaway entries through these interactions.
 

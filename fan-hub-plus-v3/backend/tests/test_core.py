@@ -17,7 +17,7 @@ def state(tmp_path):
 
 @pytest.fixture
 def data():
-    return dict(title='A thoughtful test review', subject='Original sample film', body='This is an original review with enough detail to discuss the sound design.', topic='movies', rating=4, spoiler=False)
+    return dict(title='A thoughtful test review', subject='Original sample film', body='This is an original review with enough detail to discuss the sound design.', topic='movies', format='post', mediaUrl='', rating=4, spoiler=False)
 
 
 def transact(factory, fn):
@@ -52,7 +52,7 @@ def test_guest_cannot_post(state, data):
     assert e.value.status == 401
 
 
-@pytest.mark.parametrize('patch', [{'rating': 6}, {'rating': True}, {'topic': 'unknown'}, {'body': 'short'}, {'spoiler': 'yes'}, {'title': ''}, {'authorId': 'u-admin'}])
+@pytest.mark.parametrize('patch', [{'rating': 6}, {'rating': True}, {'topic': 'unknown'}, {'format': 'embed'}, {'format': 'video', 'mediaUrl': 'javascript:alert(1)'}, {'format': 'soundtrack', 'mediaUrl': ''}, {'body': 'short'}, {'spoiler': 'yes'}, {'title': ''}, {'authorId': 'u-admin'}])
 def test_validation(state, data, patch):
     with pytest.raises(core.Fault):
         new_post(state, {**data, **patch})
@@ -64,10 +64,21 @@ def test_nonadmin_cannot_approve(state, data):
         transact(state, lambda db: core.moderate(db, person(db), p['id'], {'decision': 'published', 'version': 1}))
 
 
-def test_self_approval_blocked(state, data):
+def test_admin_post_publishes_immediately(state, data):
     p = transact(state, lambda db: core.save_post(db, person(db, 'admin'), data))
-    with pytest.raises(core.Fault):
-        transact(state, lambda db: core.moderate(db, person(db, 'admin'), p['id'], {'decision': 'published', 'version': 1}))
+    assert p['status'] == 'published'
+    with state() as db:
+        assert p['id'] in [x['id'] for x in core.social(db, None)['posts']]
+
+
+def test_requested_categories_and_media_types(state, data):
+    for topic in ['soundtrack', 'anime', 'gaming', 'movies', 'tv', 'kpop', 'comic', 'manga', 'cosplay']:
+        p = new_post(state, {**data, 'topic': topic})
+        assert p['topic'] == topic and p['status'] == 'pending'
+    video = new_post(state, {**data, 'format': 'video', 'mediaUrl': 'https://cdn.example.test/demo.webm'})
+    audio = new_post(state, {**data, 'topic': 'soundtrack', 'format': 'soundtrack', 'mediaUrl': '/media/orbit.wav'})
+    assert video['format'] == 'video' and video['mediaUrl'].startswith('https://')
+    assert audio['format'] == 'soundtrack' and audio['mediaUrl'] == '/media/orbit.wav'
 
 
 def test_duplicate_moderation(state, data):

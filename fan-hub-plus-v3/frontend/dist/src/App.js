@@ -15,6 +15,7 @@ const Account = React.lazy(() => import("./pages/Account.js"));
 const Admin = React.lazy(() => import("./pages/Admin.js"));
 const Assistant = React.lazy(() => import("./features/Lore.js"));
 const Utility = React.lazy(() => import("./pages/Utility.js"));
+const MemberProfile = React.lazy(() => import("./pages/MemberProfile.js"));
 const Releases = React.lazy(() => import("./pages/Releases.js"));
 export class ErrorBoundary extends React.Component {
     state = { failed: false };
@@ -95,6 +96,9 @@ export default function App() {
             React.createElement(Admin, null)));
     else if (pathname === "/community")
         page = React.createElement(Community, { key: user?.id || "visitor" });
+    else if (pathname.startsWith("/community/member/") &&
+        pathname.split("/").length === 4)
+        page = (React.createElement(MemberProfile, { key: pathname, id: decodeURIComponent(pathname.slice(19)) }));
     else if (pathname === "/giveaways")
         page = React.createElement(Giveaways, { key: user?.id || "visitor" });
     else if (pathname.startsWith("/knowledge/"))
@@ -106,7 +110,9 @@ export default function App() {
                 ? "sitemap"
                 : pathname === "/privacy"
                     ? "privacy"
-                    : "404" }));
+                    : pathname === "/terms"
+                        ? "terms"
+                        : "404" }));
     return (React.createElement(Layout, null,
         React.createElement(React.Suspense, { fallback: React.createElement("div", { className: "loading-page" },
                 React.createElement(Skeleton, { cards: 3 })) }, page)));

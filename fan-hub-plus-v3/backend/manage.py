@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parent
 
 
 def seed_demo(db):
-    seed = json.loads((ROOT / 'seed/demo.json').read_text())
+    seed = json.loads((ROOT / 'seed/demo.json').read_text(encoding='utf-8'))
     people = [('u-member', 'Alex Morgan', 'fan@fanhub.demo', 'member'), ('u-admin', 'Studio Admin', 'admin@fanhub.demo', 'admin'), ('sample-minh', 'Minh Anh', 'minh@sample.invalid', 'member'), ('sample-linh', 'Linh Tran', 'linh@sample.invalid', 'member'), ('sample-ha', 'Ha Nguyen', 'ha@sample.invalid', 'member')]
     for ident, name, email, role in people:
         if not db.get(User, ident):
@@ -24,7 +24,7 @@ def seed_demo(db):
     db.flush()
     for p in seed['social']['posts']:
         if not db.get(Post, p['id']):
-            db.add(Post(id=p['id'], author_id=p['authorId'], title=p['title'], subject=p['subject'], body=p['body'], topic=p['topic'], spoiler=p['spoiler'], rating=p['rating'], status=p['status'], reason=p['reason'], version=p['version'], sample=True, created_at=p['createdAt']))
+            db.add(Post(id=p['id'], author_id=p['authorId'], title=p['title'], subject=p['subject'], body=p['body'], topic=p['topic'], content_type=p.get('format', 'post'), media_url=p.get('mediaUrl', ''), spoiler=p['spoiler'], rating=p['rating'], status=p['status'], reason=p['reason'], version=p['version'], sample=True, created_at=p['createdAt']))
     db.flush()
     for c in seed['social']['comments']:
         if not db.get(Comment, c['id']):
@@ -74,7 +74,7 @@ def main():
     args = parser.parse_args()
     if args.command == 'schema-mysql':
         destination = ROOT / 'schema/mysql.sql'; destination.parent.mkdir(exist_ok=True)
-        with destination.open('w') as out:
+        with destination.open('w', encoding='utf-8') as out:
             out.write('-- V3 EXTENSION BASELINE ONLY. No data. Apply to a new database.\n')
             for table in Base.metadata.sorted_tables:
                 out.write(str(CreateTable(table).compile(dialect=mysql.dialect())) + ';\n')

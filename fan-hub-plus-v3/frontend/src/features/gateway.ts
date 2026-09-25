@@ -7,10 +7,15 @@ import type {
   Campaign,
   ChatResult,
   Message,
+  PublicProfile,
 } from "./types";
 export const gateway = {
   social: (u: Author | null) =>
     serverMode ? api<SocialData>("/community") : demo.social(u),
+  publicProfile: (id: string) =>
+    serverMode
+      ? api<PublicProfile>("/users/" + encodeURIComponent(id))
+      : demo.publicProfile(id),
   post: (u: Author | null, p: PostInput, id?: string, v?: number) =>
     serverMode
       ? api(

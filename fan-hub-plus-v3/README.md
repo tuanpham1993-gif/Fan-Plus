@@ -74,11 +74,11 @@ See `docs/AI_AND_SOURCE_POLICY.md` for limitations, source checks and provider b
 
 ## 4. Demonstrate the social flow
 
-Sign in as the member, open Community and choose **Write a post**. Add a title, work/topic, body, optional rating and spoiler flag. Preview it, confirm authorship and send for review. It appears under **My posts**, not in the public feed.
+Sign in as a member, open Community and choose **Write a post**. Choose one of the nine categories — **Soundtrack, Anime, Gaming, Movies, TV Shows, K-pop, Comic, Manga, Cosplay** — and a content type: **Post**, **Video** or **Soundtrack**. Add a title, work/topic and body; Video/Soundtrack also require a direct HTTPS media URL or a local `/media/...` path. Preview it, confirm authorship and send for review. Member submissions appear under **My posts** and are not public until an administrator approves them.
 
-Sign in as the admin, open Community > **Review queue**, approve or request changes. Published posts accept likes or love (one reaction per user), comments and one-level replies. Members can edit their own posts, which returns them to moderation. Reports appear in the admin **Reports** tab. The administrator cannot approve their own post.
+Sign in as the admin and open Community > **Review queue** (or use the Community moderation shortcut in the Admin workspace) to publish or request changes on member submissions. Administrators may also create or edit their own Community content; those admin-authored posts publish immediately instead of entering their own review queue. Published content accepts likes or love (one reaction per user), comments and one-level replies. Member edits return to moderation. Reports appear in the admin **Reports** tab.
 
-This is not a full Instagram clone: there are no private messages, follow graph, live notifications, arbitrary video uploads or infinite real-time feed. These would require separate moderation, storage and privacy work.
+Media support is deliberately URL-based in this revision: it renders direct video/audio sources, but it does not yet implement arbitrary binary uploads, transcoding or media storage. There are also no private messages, follow graph, live notifications or infinite real-time feed. Those require separate moderation, storage and privacy work.
 
 ## 5. Demonstrate the quarterly draw
 

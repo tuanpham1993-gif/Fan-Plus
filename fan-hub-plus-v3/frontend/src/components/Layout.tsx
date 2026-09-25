@@ -83,6 +83,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           About this demo <Icon name="arrow" size={12} />
         </Link>
       </div>
+      {serverMode && user && user.verified === false && (
+        <div className="demo-strip verify-strip">
+          <span>
+            <Icon name="info" size={14} />
+            Verify your email to post, comment or enter giveaways.
+          </span>
+          <Link to={"/verify-email?email=" + encodeURIComponent(user.email)}>
+            Verify now <Icon name="arrow" size={12} />
+          </Link>
+        </div>
+      )}
       <header className="site-header">
         <div className="header-inner">
           <Logo />

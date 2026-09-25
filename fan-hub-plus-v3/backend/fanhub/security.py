@@ -3,8 +3,25 @@ import hashlib, hmac, secrets, time
 from datetime import datetime, timezone, timedelta
 from sqlalchemy import select, update, delete
 from sqlalchemy.exc import IntegrityError
-from .models import User, AuthSession, RateBucket
-from .core import Fault, text, fields, sha
+from .models import User, AuthSession, RateBucket, Verification
+from .core import Fault, text, fields, sha, PROFILE_CATEGORIES
+
+# Known disposable / throwaway email domains. Registration with these is rejected
+# so accounts cannot be created with junk addresses that will never receive mail.
+DISPOSABLE_EMAIL_DOMAINS = {
+    'mailinator.com', '10minutemail.com', '10minutemail.net', 'guerrillamail.com',
+    'guerrillamail.info', 'guerrillamail.biz', 'guerrillamail.de', 'sharklasers.com',
+    'yopmail.com', 'yopmail.fr', 'yopmail.net', 'trashmail.com', 'trash-mail.com',
+    'tempmail.com', 'temp-mail.org', 'tempmail.net', 'tempinbox.com', 'throwawaymail.com',
+    'getnada.com', 'dispostable.com', 'maildrop.cc', 'mintemail.com', 'mailnesia.com',
+    'fakeinbox.com', 'spamgourmet.com', 'discard.email', 'moakt.com', 'emailondeck.com',
+    '33mail.com', 'mytemp.email', 'mohmal.com', 'mail-temporaire.fr', 'einrot.com',
+    'jetable.org', 'spam4.me', 'mailcatch.com', 'anonbox.net', 'inboxbear.com',
+}
+
+
+def otp_code():
+    return f'{secrets.randbelow(1_000_000):06d}'
 
 
 def password_hash(password):
@@ -26,17 +43,47 @@ def verify_password(password, encoded):
 
 
 def register(db, data, demo_verify=False):
-    fields(data, {'name', 'email', 'password'})
+    fields(data, {'name', 'email', 'password', 'favoriteCategories'})
     name = text(data.get('name'), 2, 80, 'Name')
     email = text(data.get('email'), 5, 254, 'Email').lower()
     if '@' not in email or '.' not in email.rsplit('@', 1)[-1] or any(c.isspace() for c in email):
         raise Fault('Enter a valid email address.')
+    domain = email.rsplit('@', 1)[-1]
+    if domain in DISPOSABLE_EMAIL_DOMAINS:
+        raise Fault('Disposable or throwaway email addresses cannot be used. Use a real inbox you can verify.')
     password = text(data.get('password'), 12, 128, 'Password')
+    categories = data.get('favoriteCategories', [])
+    if not isinstance(categories, list) or not all(isinstance(c, str) and c in PROFILE_CATEGORIES for c in categories):
+        raise Fault('Choose your favorite categories from the list.')
     if db.scalar(select(User.id).where(User.email == email)):
         raise Fault('Registration cannot be completed with these details.', 409)
-    u = User(name=name, email=email, password_hash=password_hash(password), role='member', verified=demo_verify)
+    u = User(name=name, email=email, password_hash=password_hash(password), role='member', verified=demo_verify, favorite_categories=categories)
     db.add(u); db.flush()
     return u
+
+
+def issue_verification(db, user):
+    db.execute(update(Verification).where(Verification.user_id == user.id, Verification.consumed.is_(False)).values(consumed=True))
+    code = otp_code()
+    expiry = (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat().replace('+00:00', 'Z')
+    db.add(Verification(user_id=user.id, code_hash=sha(code), expires_at=expiry))
+    return code
+
+
+def verify_email(db, user, code):
+    if user.verified:
+        return
+    code = text(code, 6, 6, 'Verification code')
+    v = db.scalar(select(Verification).where(Verification.user_id == user.id, Verification.consumed.is_(False)).order_by(Verification.created_at.desc()))
+    if not v or datetime.fromisoformat(v.expires_at.replace('Z', '+00:00')) <= datetime.now(timezone.utc):
+        raise Fault('This verification code has expired. Request a new one.')
+    if v.attempts >= 5:
+        raise Fault('Too many incorrect attempts. Request a new code.', 429)
+    v.attempts += 1
+    if not hmac.compare_digest(sha(code), v.code_hash):
+        raise Fault('That code is incorrect.')
+    v.consumed = True
+    user.verified = True
 
 
 DUMMY_HASH = password_hash('not-a-real-login-secret')

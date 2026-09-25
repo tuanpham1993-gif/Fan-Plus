@@ -2,6 +2,9 @@ import { demo } from "./demo.js";
 import { api, json, serverMode } from "./http.js";
 export const gateway = {
     social: (u) => serverMode ? api("/community") : demo.social(u),
+    publicProfile: (id) => serverMode
+        ? api("/users/" + encodeURIComponent(id))
+        : demo.publicProfile(id),
     post: (u, p, id, v) => serverMode
         ? api("/community/posts" + (id ? "/" + id : ""), json(id ? "PATCH" : "POST", { ...p, ...(id ? { version: v } : {}) }))
         : demo.post(u, p, id, v),

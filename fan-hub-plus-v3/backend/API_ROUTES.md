@@ -31,6 +31,17 @@ Extracted from actual route declarations. Source presence is not HTTP-test certi
 | DELETE | `/api/v1/lore/history` | `lore_clear` |
 | GET | `/api/v1/lore/sources/<source_id>` | `lore_source` |
 
+
+## Community post payload
+
+`POST /api/v1/community/posts` and `PATCH /api/v1/community/posts/<post_id>` accept the existing title/subject/body/rating/spoiler fields plus:
+
+- `topic`: `soundtrack | anime | gaming | movies | tv | kpop | comic | manga | cosplay`
+- `format`: `post | video | soundtrack`
+- `mediaUrl`: empty for `post`; required for `video` and `soundtrack`. The current implementation accepts a direct `https://...` URL (without embedded credentials) or a local `/media/...` path.
+
+Member-created or member-edited content is saved as `pending` for administrator moderation. Admin-authored content is published immediately. The moderation endpoint remains for pending member submissions and still performs role/version checks.
+
 All mutations require a session-bound `X-CSRFToken`. Retrieve `{data:{token:...}}` from `/auth/csrf`. Identity is checked server-side. Admin moderation, freeze and draw require admin role. Public reads and anonymous source-grounded chat are available without member login.
 
 Responses use `{data:...}` and failures use `{error:{message,requestId}}`. Rate-limited calls return 429. Most fields use the camelCase frontend types in `src/features/types.ts`. Request examples are in `src/features/gateway.ts`.

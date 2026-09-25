@@ -8,14 +8,14 @@ from flask import Flask, Blueprint, jsonify, request, session, g, send_from_dire
 from sqlalchemy import select, delete
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from werkzeug.exceptions import HTTPException
-from .models import database, Base, AuthSession, Campaign, Knowledge
+from .models import database, Base, AuthSession, Campaign, Knowledge, User
 from . import core, security, lore
 
 
 def build_app(config=None):
     root = Path(__file__).resolve().parents[2]
     app = Flask(__name__, static_folder=None)
-    app.config.update(SECRET_KEY=os.environ.get('SECRET_KEY', ''), DATABASE_URL=os.environ.get('DATABASE_URL', 'sqlite:///fanhub-demo.db'), SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Lax', SESSION_COOKIE_SECURE=os.environ.get('COOKIE_SECURE') == '1', PERMANENT_SESSION_LIFETIME=timedelta(hours=8), MAX_CONTENT_LENGTH=65536, LORE_MODE=os.environ.get('LORE_MODE', 'extractive'), OPENAI_API_KEY=os.environ.get('OPENAI_API_KEY', ''), OPENAI_MODEL=os.environ.get('OPENAI_MODEL', ''), DEMO_VERIFY_REGISTRATION=os.environ.get('DEMO_VERIFY_REGISTRATION') == '1', FRONTEND_DIST=str(root / 'frontend' / 'dist'), TRUSTED_HOSTS=['localhost', '127.0.0.1', '[::1]'])
+    app.config.update(SECRET_KEY=os.environ.get('SECRET_KEY', ''), DATABASE_URL=os.environ.get('DATABASE_URL', 'sqlite:///fanhub-demo.db'), SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Lax', SESSION_COOKIE_SECURE=os.environ.get('COOKIE_SECURE') == '1', PERMANENT_SESSION_LIFETIME=timedelta(hours=8), MAX_CONTENT_LENGTH=65536, LORE_MODE=os.environ.get('LORE_MODE', 'extractive'), OPENAI_API_KEY=os.environ.get('OPENAI_API_KEY', ''), OPENAI_MODEL=os.environ.get('OPENAI_MODEL', ''), DEMO_VERIFY_REGISTRATION=os.environ.get('DEMO_VERIFY_REGISTRATION') == '1', DEV_EXPOSE_OTP=os.environ.get('DEV_EXPOSE_OTP', '1') == '1', FRONTEND_DIST=str(root / 'frontend' / 'dist'), TRUSTED_HOSTS=['localhost', '127.0.0.1', '[::1]'])
     if os.environ.get('TRUSTED_HOSTS'):
         app.config['TRUSTED_HOSTS'] = os.environ['TRUSTED_HOSTS'].split(',')
     if config:
@@ -123,7 +123,49 @@ def build_app(config=None):
     @api.post('/auth/register')
     def register():
         u = security.register(g.db, data(), app.config['DEMO_VERIFY_REGISTRATION'])
-        return result({'user': core.public_user(u), 'verification': 'demo-auto-verified' if u.verified else 'administrator-verification-required', 'emailSent': False})
+        payload = {'user': core.public_user(u), 'verification': 'demo-auto-verified' if u.verified else 'code-sent', 'emailSent': False}
+        if not u.verified:
+            code = security.issue_verification(g.db, u)
+            app.logger.info('Verification code for %s: %s', u.email, code)
+            payload['emailSent'] = True
+            if app.config['DEV_EXPOSE_OTP']:
+                payload['devOtp'] = code
+        return result(payload)
+
+    @api.post('/auth/verify')
+    def verify():
+        d = data()
+        core.fields(d, {'email', 'code'})
+        email = core.text(d.get('email'), 1, 254, 'Email').lower()
+        u = g.db.scalar(select(User).where(User.email == email))
+        if not u:
+            raise core.Fault('That code is incorrect.')
+        security.verify_email(g.db, u, d.get('code'))
+        return result({'user': core.public_user(u)})
+
+    @api.post('/auth/verify/resend')
+    def verify_resend():
+        d = data()
+        core.fields(d, {'email'})
+        email = core.text(d.get('email'), 1, 254, 'Email').lower()
+        u = g.db.scalar(select(User).where(User.email == email))
+        payload = {'emailSent': False}
+        if u and not u.verified:
+            security.consume_rate(g.db, 'verify-resend:' + email, 5, 600)
+            code = security.issue_verification(g.db, u)
+            app.logger.info('Verification code for %s: %s', u.email, code)
+            payload['emailSent'] = True
+            if app.config['DEV_EXPOSE_OTP']:
+                payload['devOtp'] = code
+        return result(payload)
+
+    @api.patch('/auth/profile')
+    def profile():
+        return result({'user': core.public_user(core.update_profile(g.db, g.user, data()))})
+
+    @api.get('/users/<user_id>')
+    def public_profile(user_id):
+        return result(core.public_profile(g.db, user_id))
 
     @api.post('/auth/login')
     def login():

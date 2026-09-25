@@ -27,6 +27,9 @@ class User(Base):
     role: Mapped[str] = mapped_column(String(12), default='member')
     suspended: Mapped[bool] = mapped_column(Boolean, default=False)
     verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    bio: Mapped[str] = mapped_column(String(500), default='')
+    favorite_categories: Mapped[list] = mapped_column(JSON, default=list)
+    favorite_fandoms: Mapped[list] = mapped_column(JSON, default=list)
     created_at: Mapped[str] = mapped_column(String(32), default=now)
     __table_args__ = (CheckConstraint("role IN ('member','admin')"),)
 
@@ -38,6 +41,17 @@ class AuthSession(Base):
     expires_at: Mapped[str] = mapped_column(String(32))
 
 
+class Verification(Base):
+    __tablename__ = 'email_verifications'
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    user_id: Mapped[str] = mapped_column(ForeignKey('users.id'), index=True)
+    code_hash: Mapped[str] = mapped_column(String(64))
+    expires_at: Mapped[str] = mapped_column(String(32))
+    consumed: Mapped[bool] = mapped_column(Boolean, default=False)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[str] = mapped_column(String(32), default=now)
+
+
 class Post(Base):
     __tablename__ = 'community_posts'
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
@@ -45,7 +59,9 @@ class Post(Base):
     title: Mapped[str] = mapped_column(String(140))
     subject: Mapped[str] = mapped_column(String(100))
     body: Mapped[str] = mapped_column(Text)
-    topic: Mapped[str] = mapped_column(String(12), index=True)
+    topic: Mapped[str] = mapped_column(String(16), index=True)
+    content_type: Mapped[str] = mapped_column(String(12), default='post')
+    media_url: Mapped[str] = mapped_column(String(500), default='')
     spoiler: Mapped[bool] = mapped_column(Boolean, default=False)
     rating: Mapped[int] = mapped_column(Integer, default=0)
     status: Mapped[str] = mapped_column(String(12), default='pending', index=True)
@@ -53,7 +69,12 @@ class Post(Base):
     version: Mapped[int] = mapped_column(Integer, default=1)
     sample: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[str] = mapped_column(String(32), default=now, index=True)
-    __table_args__ = (CheckConstraint("topic IN ('anime','movies','music')"), CheckConstraint('rating BETWEEN 0 AND 5'), CheckConstraint("status IN ('pending','published','rejected','hidden')"))
+    __table_args__ = (
+        CheckConstraint("topic IN ('soundtrack','anime','gaming','movies','tv','kpop','comic','manga','cosplay')"),
+        CheckConstraint("content_type IN ('post','video','soundtrack')"),
+        CheckConstraint('rating BETWEEN 0 AND 5'),
+        CheckConstraint("status IN ('pending','published','rejected','hidden')"),
+    )
 
 
 class Comment(Base):

@@ -47,7 +47,7 @@ with sync_playwright() as p:
         check('Retained discovery homepage and new navigation',home)
         def feed():
             go('/community');expect(page.locator('[data-testid="community-post"]')).to_have_count(3)
-            page.get_by_role('button',name='Music',exact=True).click();expect(page.locator('[data-testid="community-post"]')).to_have_count(1)
+            page.get_by_role('button',name='Soundtrack',exact=True).click();expect(page.locator('[data-testid="community-post"]')).to_have_count(1)
             page.get_by_role('button',name='All conversations',exact=True).click()
             page.get_by_label('Search community posts').fill('quiet');expect(page.locator('[data-testid="community-post"]')).to_have_count(1)
             page.get_by_label('Search community posts').fill('');snapshot('community-desktop')
@@ -59,7 +59,10 @@ with sync_playwright() as p:
         def compose():
             login('member');go('/community');page.get_by_role('button',name='Write a post',exact=True).click()
             dialog=page.locator('dialog[open]')
-            dialog.get_by_label('Film, anime, song or discussion topic').fill('Original film club')
+            dialog.locator('#post-editor select').nth(0).select_option('gaming')
+            dialog.locator('#post-editor select').nth(1).select_option('video')
+            dialog.locator('input[placeholder="/media/portal.webm"]').fill('/media/portal.webm')
+            dialog.get_by_label('Title, work, character or discussion topic').fill('Original film club')
             dialog.get_by_label('Give your perspective a title').fill('A sound worth listening to')
             dialog.locator('#post-editor textarea').fill('This review discusses the careful use of silence and how it leaves room for the viewer. The comments are my own interpretation of this original example.')
             dialog.get_by_label('These are my own words',exact=False).check()

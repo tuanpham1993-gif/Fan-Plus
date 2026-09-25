@@ -1,9 +1,9 @@
 import { serverMode } from "../features/http";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useApp } from "../lib/store";
 import { Link, navigate, useLocation } from "../lib/router";
 import { repository } from "../services/repository";
-import { DEMO_PASSWORD } from "../domain/seed";
+import { DEMO_PASSWORD, categories } from "../domain/seed";
 import { safeReturnPath } from "../domain/logic";
 import { Icon, Button, Notice, Field } from "../components/ui";
 export default function Auth({ mode }: { mode: string }) {
@@ -17,7 +17,12 @@ export default function Auth({ mode }: { mode: string }) {
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [done, setDone] = useState(false),
-    [resetToken, setResetToken] = useState<string | null>(null);
+    [resetToken, setResetToken] = useState<string | null>(null),
+    [interests, setInterests] = useState<string[]>([]),
+    [code, setCode] = useState(""),
+    [devOtp, setDevOtp] = useState<string | null>(null),
+    [emailSent, setEmailSent] = useState(false),
+    [verified, setVerified] = useState(false);
   const title =
     mode === "login"
       ? "Welcome back to your worlds."
@@ -47,7 +52,16 @@ export default function Auth({ mode }: { mode: string }) {
         notify("Welcome to your demo workspace.");
       } else if (mode === "register") {
         if (password !== confirm) throw new Error("Passwords do not match.");
-        setDb(await repository.register(name, email, password));
+        const result = await repository.register(
+          name,
+          email,
+          password,
+          interests,
+        );
+        setDb(result.db);
+        // Auth remounts on route change (key={pathname} in App.tsx), so this
+        // component's state does not survive the navigate below; the verify
+        // page requests its own fresh code on mount instead of relying on it.
         navigate("/verify-email?email=" + encodeURIComponent(email));
       } else if (mode === "forgot") {
         setResetToken(await repository.forgot(email));
@@ -63,6 +77,50 @@ export default function Auth({ mode }: { mode: string }) {
       setBusy(false);
     }
   };
+  const submitCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setBusy(true);
+    try {
+      await repository.verifyEmail(email, code);
+      setVerified(true);
+      notify("Your email address has been verified.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "That code is incorrect.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const resend = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const r = await repository.resendVerification(email);
+      setEmailSent(r.emailSent);
+      setDevOtp(r.devOtp || null);
+      notify("A new verification code has been sent.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Please retry.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  // Navigating here loses the register step's in-memory devOtp/emailSent state
+  // (Auth is remounted per route), and a deep link (e.g. from the header banner)
+  // never had it in the first place, so always request a fresh code on arrival.
+  useEffect(() => {
+    if (mode !== "verify" || !serverMode || !email || verified) return;
+    void (async () => {
+      try {
+        const r = await repository.resendVerification(email);
+        setEmailSent(r.emailSent);
+        setDevOtp(r.devOtp || null);
+      } catch {
+        // A silent best-effort request; the visible Resend button covers retry.
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, email]);
   return (
     <div className="auth-layout">
       <div className="auth-art">
@@ -100,23 +158,79 @@ export default function Auth({ mode }: { mode: string }) {
         </p>
         {mode === "verify" ? (
           <>
-            <Notice>
-              No verification email has been sent. In the complete application,
-              the backend must generate, email and validate a one-time
-              verification token.
-            </Notice>
-            <p>
-              Demo profile created for <strong>{email}</strong>.{" "}
-              {serverMode
-                ? "The local server either auto-verifies demo accounts or requires administrator verification, according to its configuration. No email was sent."
-                : "You can now exercise the local sign-in flow."}
-            </p>
-            <Link
-              to={"/login?email=" + encodeURIComponent(email)}
-              className="btn btn-primary"
-            >
-              Continue to demo sign-in <Icon name="arrow" size={16} />
-            </Link>
+            {verified ? (
+              <>
+                <Notice kind="success">
+                  <strong>{email}</strong> is verified. You can now sign in.
+                </Notice>
+                <Link
+                  to={"/login?email=" + encodeURIComponent(email)}
+                  className="btn btn-primary"
+                >
+                  Continue to sign in <Icon name="arrow" size={16} />
+                </Link>
+              </>
+            ) : !serverMode ? (
+              <>
+                <Notice>
+                  Local demo accounts are verified automatically; there is no
+                  browser-only email service.
+                </Notice>
+                <Link
+                  to={"/login?email=" + encodeURIComponent(email)}
+                  className="btn btn-primary"
+                >
+                  Continue to demo sign-in <Icon name="arrow" size={16} />
+                </Link>
+              </>
+            ) : (
+              <>
+                <Notice>
+                  {emailSent
+                    ? "A 6-digit verification code was sent to " +
+                      email +
+                      ". Enter it below to activate your account."
+                    : "Enter the verification code sent to " + email + "."}
+                </Notice>
+                {devOtp && (
+                  <Notice kind="info">
+                    Local/dev mode: no real mailbox is connected, so the code is
+                    shown here instead of emailed: <code>{devOtp}</code>
+                  </Notice>
+                )}
+                <form onSubmit={submitCode} className="stack-form">
+                  <Field label="6-digit verification code">
+                    <input
+                      inputMode="numeric"
+                      pattern="[0-9]{6}"
+                      maxLength={6}
+                      required
+                      value={code}
+                      onChange={(e) =>
+                        setCode(e.target.value.replace(/\D/g, ""))
+                      }
+                      placeholder="000000"
+                    />
+                  </Field>
+                  {error && (
+                    <p className="form-error" role="alert">
+                      {error}
+                    </p>
+                  )}
+                  <Button type="submit" busy={busy} disabled={code.length !== 6}>
+                    Verify email <Icon name="check" size={16} />
+                  </Button>
+                </form>
+                <button
+                  type="button"
+                  className="small-link"
+                  onClick={() => void resend()}
+                  disabled={busy}
+                >
+                  Resend code
+                </button>
+              </>
+            )}
           </>
         ) : done ? (
           <>
@@ -223,9 +337,52 @@ export default function Auth({ mode }: { mode: string }) {
               </Link>
             )}
             {mode === "register" && (
+              <fieldset>
+                <legend>Favorite categories (optional)</legend>
+                <div className="preference-grid">
+                  {categories.map((c) => (
+                    <label
+                      key={c.id}
+                      className={
+                        interests.includes(c.id)
+                          ? "preference selected"
+                          : "preference"
+                      }
+                    >
+                      <input
+                        type="checkbox"
+                        checked={interests.includes(c.id)}
+                        onChange={() =>
+                          setInterests((s) =>
+                            s.includes(c.id)
+                              ? s.filter((x) => x !== c.id)
+                              : [...s, c.id],
+                          )
+                        }
+                      />
+                      <Icon name={c.icon} size={16} />
+                      {c.name}
+                    </label>
+                  ))}
+                </div>
+                <small>
+                  We use this to recommend discoveries for you. Change it
+                  anytime from your profile.
+                </small>
+              </fieldset>
+            )}
+            {mode === "register" && (
               <label className="check-row">
-                <input required type="checkbox" />I understand this is a demo
-                and will not enter sensitive information.
+                <input required type="checkbox" />I understand this is a demo,
+                will not enter sensitive information, and I agree to the{" "}
+                <Link to="/terms" target="_blank" rel="noopener">
+                  Terms of Service
+                </Link>{" "}
+                and{" "}
+                <Link to="/privacy" target="_blank" rel="noopener">
+                  Privacy Policy
+                </Link>
+                .
               </label>
             )}
             {error && (

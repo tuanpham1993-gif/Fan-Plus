@@ -18,7 +18,7 @@ Tài khoản thành viên: `fan@fanhub.demo`. Quản trị: `admin@fanhub.demo`.
 
 **Ask Lore / Lore Master:** nút trên thanh điều hướng mở khung chat bên phải. Trang `/assistant` dành cho hội thoại dài. Bản mẫu trích xuất ghi chú, chưa tự gọi AI. Nguồn Gojo được ghi rõ là minh họa chưa kiểm chứng với nguyên tác.
 
-**Community:** đăng nhập, viết bài, gửi duyệt. Admin mở `Review queue` để duyệt. Bài công khai có like, thả tim, bình luận, trả lời và báo cáo. Sửa bài sẽ cần duyệt lại.
+**Community:** đăng nhập, chọn Category gồm `Soundtrack / Anime / Gaming / Movies / TV Shows / K-pop / Comic / Manga / Cosplay`, rồi chọn loại `Post / Video / Soundtrack`. Thành viên gửi bài để Admin duyệt; Video/Soundtrack dùng URL HTTPS trực tiếp hoặc đường dẫn `/media/...`. Admin mở `Review queue` để duyệt bài thành viên, đồng thời bài do chính Admin tạo/sửa sẽ đăng ngay. Bài công khai có like, thả tim, bình luận, trả lời và báo cáo; thành viên sửa bài sẽ cần duyệt lại.
 
 **Quarterly gifts:** một lượt miễn phí mỗi tài khoản đủ điều kiện mỗi quý. Admin chốt danh sách và ghi kết quả một lần. Không có giải thưởng thật trong bản thử.
 

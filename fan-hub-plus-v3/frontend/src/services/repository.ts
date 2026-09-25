@@ -15,6 +15,17 @@ const DB_KEY = "fanhub.demo.db.v1",
   SESSION_KEY = "fanhub.demo.identity.v1",
   CREDENTIALS_KEY = "fanhub.demo.verifiers.v1";
 const sleep = (ms = 160) => new Promise((resolve) => setTimeout(resolve, ms));
+// Mirrors backend/fanhub/security.py's DISPOSABLE_EMAIL_DOMAINS for the local demo path.
+const DISPOSABLE_EMAIL_DOMAINS = new Set([
+  "mailinator.com", "10minutemail.com", "10minutemail.net", "guerrillamail.com",
+  "guerrillamail.info", "guerrillamail.biz", "guerrillamail.de", "sharklasers.com",
+  "yopmail.com", "yopmail.fr", "yopmail.net", "trashmail.com", "trash-mail.com",
+  "tempmail.com", "temp-mail.org", "tempmail.net", "tempinbox.com", "throwawaymail.com",
+  "getnada.com", "dispostable.com", "maildrop.cc", "mintemail.com", "mailnesia.com",
+  "fakeinbox.com", "spamgourmet.com", "discard.email", "moakt.com", "emailondeck.com",
+  "33mail.com", "mytemp.email", "mohmal.com", "mail-temporaire.fr", "einrot.com",
+  "jetable.org", "spam4.me", "mailcatch.com", "anonbox.net", "inboxbear.com",
+]);
 export class AppError extends Error {
   constructor(
     message: string,
@@ -148,10 +159,23 @@ export const repository = {
     sessionStorage.setItem(SESSION_KEY, u.id);
     return db;
   },
-  async register(name: string, email: string, password: string) {
+  async register(
+    name: string,
+    email: string,
+    password: string,
+    favoriteCategories: string[] = [],
+  ) {
     if (serverMode) {
-      await api("/auth/register", json("POST", { name, email, password }));
-      return readDb();
+      const data = await api<{
+        user: User;
+        verification: string;
+        emailSent: boolean;
+        devOtp?: string;
+      }>(
+        "/auth/register",
+        json("POST", { name, email, password, favoriteCategories }),
+      );
+      return { db: readDb(), ...data };
     }
     await sleep();
     const db = readDb(),
@@ -160,6 +184,10 @@ export const repository = {
       throw new AppError("Display name must contain 1-60 characters.");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(key))
       throw new AppError("Enter a valid email address.");
+    if (DISPOSABLE_EMAIL_DOMAINS.has(key.split("@")[1]))
+      throw new AppError(
+        "Disposable or throwaway email addresses cannot be used.",
+      );
     if (password.length < 10) throw new AppError("Use at least 10 characters.");
     if (db.users.some((x) => x.email === key))
       throw new AppError("This demo email is already registered.");
@@ -168,14 +196,43 @@ export const repository = {
       name: name.trim(),
       email: key,
       role: "member",
-      favoriteCategories: [],
+      favoriteCategories,
       favoriteFandoms: [],
       bio: "",
       suspended: false,
     });
     await setPassword(key, password);
     persist(db);
-    return db;
+    return {
+      db,
+      user: null,
+      verification: "demo-auto-verified",
+      emailSent: false,
+      devOtp: undefined as string | undefined,
+    };
+  },
+  async verifyEmail(email: string, code: string) {
+    if (serverMode) {
+      const data = await api<{ user: User }>(
+        "/auth/verify",
+        json("POST", { email, code }),
+      );
+      const db = readDb();
+      db.users = db.users.filter((u) => u.id !== data.user.id);
+      db.users.push(data.user);
+      persist(db);
+      return db;
+    }
+    await sleep();
+    return readDb();
+  },
+  async resendVerification(email: string) {
+    if (serverMode)
+      return api<{ emailSent: boolean; devOtp?: string }>(
+        "/auth/verify/resend",
+        json("POST", { email }),
+      );
+    return { emailSent: false };
   },
   async logout() {
     if (serverMode) {
@@ -309,12 +366,25 @@ export const repository = {
       u = actor(db);
     if (!patch.name.trim() || patch.name.length > 60)
       throw new AppError("Display name must contain 1-60 characters.");
+    const favoriteCategories = patch.favoriteCategories.filter((c) =>
+      db.categories.some((x) => x.id === c),
+    );
+    if (serverMode) {
+      // Persist the server-backed fields so they survive the next /auth/me sync,
+      // instead of being silently overwritten by the authoritative server record.
+      await api(
+        "/auth/profile",
+        json("PATCH", {
+          bio: patch.bio.slice(0, 500),
+          favoriteCategories,
+          favoriteFandoms: patch.favoriteFandoms,
+        }),
+      );
+    }
     Object.assign(u, patch, {
       name: patch.name.trim(),
       bio: patch.bio.slice(0, 500),
-      favoriteCategories: patch.favoriteCategories.filter((c) =>
-        db.categories.some((x) => x.id === c),
-      ),
+      favoriteCategories,
     });
     persist(db);
     return db;

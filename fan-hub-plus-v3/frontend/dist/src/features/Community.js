@@ -6,17 +6,41 @@ import { gateway } from "./gateway.js";
 import { normalize } from "./demo.js";
 import { serverMode } from "./http.js";
 import { openLore } from "./Lore.js";
-const topicNames = { anime: "Anime", movies: "Movies", music: "Music" };
+const topicNames = {
+    soundtrack: "Soundtrack",
+    anime: "Anime",
+    gaming: "Gaming",
+    movies: "Movies",
+    tv: "TV Shows",
+    kpop: "K-pop",
+    comic: "Comic",
+    manga: "Manga",
+    cosplay: "Cosplay",
+};
+const topicOptions = Object.entries(topicNames);
+const formatNames = {
+    post: "Post",
+    video: "Video",
+    soundtrack: "Soundtrack",
+};
 const images = {
+    soundtrack: "/art/kpop.svg",
     anime: "/art/anime.svg",
+    gaming: "/art/gaming.svg",
     movies: "/art/movies.svg",
-    music: "/art/kpop.svg",
+    tv: "/art/tv.svg",
+    kpop: "/art/kpop.svg",
+    comic: "/art/comics.svg",
+    manga: "/art/manga.svg",
+    cosplay: "/art/cosplay.svg",
 };
 const blank = {
     title: "",
     subject: "",
     body: "",
     topic: "anime",
+    format: "post",
+    mediaUrl: "",
     spoiler: false,
     rating: 0,
 };
@@ -37,7 +61,11 @@ function time(s) {
 }
 export default function Community() {
     const { user, notify } = useApp(), { params } = useLocation();
-    const [data, setData] = useState(null), [error, setError] = useState(""), [topic, setTopic] = useState(""), [tab, setTab] = useState("latest"), [q, setQ] = useState(""), [limit, setLimit] = useState(6), [editor, setEditor] = useState(false), [editing, setEditing] = useState(), [report, setReport] = useState(null), [reason, setReason] = useState(""), [busy, setBusy] = useState(false);
+    const [data, setData] = useState(null), [error, setError] = useState(""), [topic, setTopic] = useState(""), [tab, setTab] = useState(() => user?.role === "admin" && params.get("view") === "review"
+        ? "review"
+        : user?.role === "admin" && params.get("view") === "reports"
+            ? "reports"
+            : "latest"), [q, setQ] = useState(""), [limit, setLimit] = useState(6), [editor, setEditor] = useState(false), [editing, setEditing] = useState(), [report, setReport] = useState(null), [reason, setReason] = useState(""), [busy, setBusy] = useState(false);
     const load = useCallback(async () => {
         try {
             const d = await gateway.social(user);
@@ -106,9 +134,9 @@ export default function Community() {
                     React.createElement("br", null),
                     React.createElement("em", null, "Let's talk about them.")),
                 React.createElement("p", null,
-                    "Your film reviews, anime theories and songs on repeat.",
+                    "Reviews, videos, soundtracks, theories and fan-made perspectives.",
                     React.createElement("br", null),
-                    "A little more conversation. A little less noise.")),
+                    "Anime, games, film, TV, K-pop, comics, manga and cosplay.")),
             React.createElement("div", { className: "community-intro-note" },
                 React.createElement("span", { className: "serif-mark" }, "Fh."),
                 React.createElement("span", null,
@@ -118,9 +146,7 @@ export default function Community() {
         React.createElement("div", { className: "community-topicbar" },
             React.createElement("div", { className: "topic-chips", "aria-label": "Filter community topics" }, [
                 ["", "All conversations"],
-                ["anime", "Anime"],
-                ["movies", "Movies"],
-                ["music", "Music"],
+                ...topicOptions,
             ].map(([id, name]) => (React.createElement("button", { key: id, "aria-pressed": topic === id, className: topic === id ? "selected" : "", onClick: () => setTopic(id) }, name)))),
             React.createElement(Button, { onClick: () => compose() },
                 React.createElement(Icon, { name: "edit", size: 17 }),
@@ -168,11 +194,21 @@ export default function Community() {
                     data?.reports.filter((r) => !r.resolved).length === 0 && (React.createElement(Empty, { title: "The report queue is clear.", description: "Member reports will appear here for a human review." })),
                     data?.reports
                         .filter((r) => !r.resolved)
-                        .map((r) => (React.createElement("article", { className: "post-card", key: r.id },
-                        React.createElement("span", { className: "eyebrow" }, r.commentId ? "COMMENT REPORT" : "POST REPORT"),
-                        React.createElement("h2", null, data.posts.find((p) => p.id === r.postId)?.title ||
-                            "Unavailable post"),
-                        React.createElement("p", null, r.reason),
+                        .map((r) => (React.createElement("article", { className: "post-card report-card", key: r.id },
+                        React.createElement("span", { className: "eyebrow" },
+                            r.commentId ? "COMMENT REPORT" : "POST REPORT",
+                            " / ",
+                            time(r.createdAt)),
+                        React.createElement("h2", null, r.postTitle),
+                        React.createElement("p", { className: "muted small" },
+                            "Reported by ",
+                            React.createElement("strong", null, r.reporterName),
+                            " / Content by ",
+                            React.createElement("strong", null, r.authorName)),
+                        React.createElement("p", null,
+                            React.createElement("strong", null, "Reason: "),
+                            r.reason),
+                        r.contentPreview && (React.createElement("blockquote", { className: "report-preview preserve-space" }, r.contentPreview)),
                         React.createElement("div", { className: "post-actions" },
                             React.createElement(Button, { disabled: busy, onClick: () => void run(() => gateway.resolveReport(user, r.id, true), "Reported content hidden.") }, "Hide content"),
                             React.createElement(Button, { variant: "secondary", disabled: busy, onClick: () => void run(() => gateway.resolveReport(user, r.id, false), "Report dismissed.") }, "Dismiss report"))))))) : (React.createElement(React.Fragment, null,
@@ -198,7 +234,7 @@ export default function Community() {
                         "Different takes.",
                         React.createElement("br", null),
                         "Same respect."),
-                    React.createElement("p", null, "Talk about the work, not the person. Mark spoilers. Give credit. Posts are reviewed before they reach the feed."),
+                    React.createElement("p", null, "Talk about the work, not the person. Mark spoilers. Give credit. Member posts and media are reviewed before they reach the feed."),
                     React.createElement("div", { className: "rail-rule" },
                         React.createElement("span", null, "01"),
                         "Be thoughtful, not hurtful."),
@@ -231,10 +267,13 @@ export default function Community() {
                     ? "Community data uses the Flask API. Other V1 catalog tools remain a separate browser demo."
                     : "Interactive browser prototype. Posts and reactions are stored on this device."))),
         React.createElement(PostEditor, { open: editor, onClose: () => setEditor(false), post: editing, onSave: async (p) => {
-                const ok = await run(() => gateway.post(user, p, editing?.id, editing?.version), "Your post is awaiting moderation.");
+                const isAdmin = user?.role === "admin";
+                const ok = await run(() => gateway.post(user, p, editing?.id, editing?.version), isAdmin
+                    ? "Your post is published."
+                    : "Your post is awaiting moderation.");
                 if (ok) {
                     setEditor(false);
-                    setTab("mine");
+                    setTab(isAdmin ? "latest" : "mine");
                 }
                 return ok;
             } }),
@@ -265,7 +304,8 @@ function PostCard({ post: p, data, busy, run, onEdit, onReport, requireUser, aut
     const renderComment = (c) => (React.createElement("article", { key: c.id, className: "social-comment " + (c.parentId ? "reply" : "") },
         React.createElement("span", { className: "social-avatar mini" }, initials(c.authorName)),
         React.createElement("div", null,
-            React.createElement("strong", null, c.authorName),
+            React.createElement(Link, { className: "author-link", to: "/community/member/" + c.authorId },
+                React.createElement("strong", null, c.authorName)),
             React.createElement("p", { className: "preserve-space" }, c.body),
             React.createElement("div", { className: "comment-meta" },
                 React.createElement("span", null, time(c.createdAt)),
@@ -281,13 +321,16 @@ function PostCard({ post: p, data, busy, run, onEdit, onReport, requireUser, aut
         React.createElement("div", { className: "post-author" },
             React.createElement("span", { className: "social-avatar" }, initials(p.authorName)),
             React.createElement("div", null,
-                React.createElement("strong", null, p.authorName),
+                React.createElement(Link, { className: "author-link", to: "/community/member/" + p.authorId },
+                    React.createElement("strong", null, p.authorName)),
                 React.createElement("span", null,
                     time(p.createdAt),
                     " ",
                     React.createElement("span", { "aria-hidden": "true" }, "/"),
                     " ",
                     topicNames[p.topic],
+                    " / ",
+                    formatNames[p.format],
                     " ",
                     p.sample && "/ Sample post")),
             React.createElement("div", { className: "post-menu" },
@@ -313,6 +356,7 @@ function PostCard({ post: p, data, busy, run, onEdit, onReport, requireUser, aut
                     React.createElement(Icon, { name: "star", size: 14 }),
                     p.rating,
                     "/5")),
+                React.createElement("span", { className: "post-format-badge" }, formatNames[p.format]),
                 p.spoiler && React.createElement("span", { className: "spoiler-label" }, "Spoiler")),
             React.createElement("h2", null, hidden ? "A review with spoilers. Your choice to open it." : p.title),
             hidden ? (React.createElement("div", { className: "post-spoiler" },
@@ -324,6 +368,11 @@ function PostCard({ post: p, data, busy, run, onEdit, onReport, requireUser, aut
                 p.body.length > 450 && (React.createElement("button", { className: "small-link", onClick: () => setExpanded(!expanded) },
                     expanded ? "Read less" : "Read the full perspective",
                     React.createElement(Icon, { name: "chevron", size: 14 })))))),
+        !hidden && p.mediaUrl && p.format !== "post" && (React.createElement("div", { className: "post-media " + p.format },
+            React.createElement("div", { className: "post-media-head" },
+                React.createElement(Icon, { name: p.format === "video" ? "play" : "music", size: 17 }),
+                React.createElement("span", null, p.format === "video" ? "Video attachment" : "Soundtrack attachment")),
+            p.format === "video" ? (React.createElement("video", { controls: true, preload: "metadata", playsInline: true, src: p.mediaUrl }, "Your browser cannot play this video.")) : (React.createElement("audio", { controls: true, preload: "metadata", src: p.mediaUrl }, "Your browser cannot play this audio.")))),
         p.sample && p.id === "post-city" && !hidden && (React.createElement("div", { className: "post-cover" },
             React.createElement("img", { src: images[p.topic], alt: "Original Fan Hub illustration of an imagined city" }),
             React.createElement("div", null,
@@ -332,19 +381,21 @@ function PostCard({ post: p, data, busy, run, onEdit, onReport, requireUser, aut
         p.status === "published" && (React.createElement(React.Fragment, null,
             React.createElement("div", { className: "post-totals" },
                 React.createElement("span", null,
-                    reactions.length,
+                    reactions.filter((r) => r.kind === "like").length,
+                    " likes /",
                     " ",
-                    reactions.length === 1 ? "appreciation" : "appreciations"),
+                    reactions.filter((r) => r.kind === "heart").length,
+                    " loves"),
                 React.createElement("button", { onClick: () => setComments(!comments) },
                     cs.filter((c) => !c.hidden).length,
                     " comments")),
             React.createElement("div", { className: "post-actions" },
-                React.createElement("button", { disabled: busy, className: mine === "like" ? "active" : "", "aria-pressed": mine === "like", onClick: () => reaction("like") },
-                    React.createElement(Icon, { name: "like", size: 19 }),
-                    "Like"),
-                React.createElement("button", { disabled: busy, className: mine === "heart" ? "active heart" : "", "aria-pressed": mine === "heart", onClick: () => reaction("heart") },
+                React.createElement("button", { disabled: busy, className: "reaction-btn " + (mine === "like" ? "active" : ""), "aria-pressed": mine === "like", onClick: () => reaction("like") },
+                    React.createElement(Icon, { name: "like", size: 19, fill: mine === "like" ? "currentColor" : "none" }),
+                    mine === "like" ? "Liked" : "Like"),
+                React.createElement("button", { disabled: busy, className: "reaction-btn " + (mine === "heart" ? "active heart" : ""), "aria-pressed": mine === "heart", onClick: () => reaction("heart") },
                     React.createElement(Icon, { name: "heart", size: 19, fill: mine === "heart" ? "currentColor" : "none" }),
-                    "Love"),
+                    mine === "heart" ? "Loved" : "Love"),
                 React.createElement("button", { onClick: () => setComments(!comments), "aria-expanded": comments },
                     React.createElement(Icon, { name: "chat", size: 19 }),
                     "Comment"),
@@ -416,6 +467,8 @@ function PostEditor({ open, onClose, post, onSave, }) {
                 subject: post.subject,
                 body: post.body,
                 topic: post.topic,
+                format: post.format,
+                mediaUrl: post.mediaUrl,
                 spoiler: post.spoiler,
                 rating: post.rating,
             });
@@ -426,7 +479,11 @@ function PostEditor({ open, onClose, post, onSave, }) {
             setForm(saved &&
                 typeof saved.title === "string" &&
                 typeof saved.body === "string"
-                ? { ...blank, ...saved }
+                ? {
+                    ...blank,
+                    ...saved,
+                    topic: saved.topic === "music" ? "soundtrack" : saved.topic,
+                }
                 : blank);
         }
         catch {
@@ -445,6 +502,18 @@ function PostEditor({ open, onClose, post, onSave, }) {
     function field(k, v) {
         setForm((f) => ({ ...f, [k]: v }));
     }
+    const bodyWords = new Set(form.body
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
+        .map((w) => w.toLowerCase()));
+    const ratingAllowed = form.body.trim().length >= 20 &&
+        bodyWords.size >= 4 &&
+        !/(.)\1{9,}/.test(form.body);
+    useEffect(() => {
+        if (!ratingAllowed && form.rating > 0)
+            field("rating", 0);
+    }, [ratingAllowed]);
     return (React.createElement(Modal, { open: open, onClose: onClose, title: post ? "Revisit your perspective" : "A thought worth sharing", wide: true },
         React.createElement("div", { className: "editor-top" },
             React.createElement("span", null, "Your words. Your point of view."),
@@ -455,9 +524,14 @@ function PostEditor({ open, onClose, post, onSave, }) {
             React.createElement("span", { className: "eyebrow" },
                 topicNames[form.topic],
                 " / ",
+                formatNames[form.format],
+                " /",
+                " ",
                 form.subject || "Your work or topic"),
             React.createElement("h2", null, form.title || "Your title goes here"),
-            React.createElement("p", { className: "preserve-space" }, form.body || "Your perspective will appear here."))) : (React.createElement("form", { id: "post-editor", className: "stack-form", onSubmit: async (e) => {
+            React.createElement("p", { className: "preserve-space" }, form.body || "Your perspective will appear here."),
+            form.mediaUrl && form.format === "video" && (React.createElement("video", { className: "editor-preview-media", controls: true, preload: "metadata", src: form.mediaUrl })),
+            form.mediaUrl && form.format === "soundtrack" && (React.createElement("audio", { className: "editor-preview-media", controls: true, preload: "metadata", src: form.mediaUrl })))) : (React.createElement("form", { id: "post-editor", className: "stack-form", onSubmit: async (e) => {
                 e.preventDefault();
                 setBusy(true);
                 try {
@@ -477,10 +551,27 @@ function PostEditor({ open, onClose, post, onSave, }) {
             React.createElement("div", { className: "form-row" },
                 React.createElement("label", { className: "field" },
                     React.createElement("span", null, "Category"),
-                    React.createElement("select", { value: form.topic, onChange: (e) => field("topic", e.target.value) }, Object.entries(topicNames).map(([k, v]) => (React.createElement("option", { key: k, value: k }, v))))),
+                    React.createElement("select", { value: form.topic, onChange: (e) => field("topic", e.target.value) }, topicOptions.map(([k, v]) => (React.createElement("option", { key: k, value: k }, v))))),
                 React.createElement("label", { className: "field" },
-                    React.createElement("span", null, "Film, anime, song or discussion topic"),
-                    React.createElement("input", { value: form.subject, onChange: (e) => field("subject", e.target.value), required: true, maxLength: 100, placeholder: "What are we talking about?" }))),
+                    React.createElement("span", null, "Post type"),
+                    React.createElement("select", { value: form.format, onChange: (e) => {
+                            const next = e.target.value;
+                            setForm((f) => ({
+                                ...f,
+                                format: next,
+                                mediaUrl: next === "post" ? "" : f.mediaUrl,
+                            }));
+                        } },
+                        React.createElement("option", { value: "post" }, "Post / discussion"),
+                        React.createElement("option", { value: "video" }, "Video"),
+                        React.createElement("option", { value: "soundtrack" }, "Soundtrack / audio")))),
+            React.createElement("label", { className: "field" },
+                React.createElement("span", null, "Title, work, character or discussion topic"),
+                React.createElement("input", { value: form.subject, onChange: (e) => field("subject", e.target.value), required: true, maxLength: 100, placeholder: "What are we talking about?" })),
+            form.format !== "post" && (React.createElement("label", { className: "field" },
+                React.createElement("span", null, form.format === "video" ? "Video URL" : "Soundtrack URL"),
+                React.createElement("input", { type: "text", value: form.mediaUrl, onChange: (e) => field("mediaUrl", e.target.value), required: true, maxLength: 500, placeholder: form.format === "video" ? "/media/portal.webm" : "/media/orbit.wav" }),
+                React.createElement("small", null, "Use a direct HTTPS media URL or a local /media/ path. Embedded HTML is not accepted."))),
             React.createElement("label", { className: "field" },
                 React.createElement("span", null, "Give your perspective a title"),
                 React.createElement("input", { value: form.title, onChange: (e) => field("title", e.target.value), required: true, minLength: 5, maxLength: 140, placeholder: "A small detail. A big idea." })),
@@ -493,24 +584,33 @@ function PostEditor({ open, onClose, post, onSave, }) {
             React.createElement("div", { className: "editor-options" },
                 React.createElement("label", { className: "field" },
                     React.createElement("span", null, "Optional rating"),
-                    React.createElement("select", { value: form.rating, onChange: (e) => field("rating", Number(e.target.value)) },
+                    React.createElement("select", { value: form.rating, disabled: !ratingAllowed, onChange: (e) => field("rating", Number(e.target.value)) },
                         React.createElement("option", { value: 0 }, "No rating"),
                         [1, 2, 3, 4, 5].map((n) => (React.createElement("option", { key: n, value: n },
                             n,
-                            " / 5"))))),
+                            " / 5")))),
+                    !ratingAllowed && (React.createElement("small", null, "Write a real perspective of at least 20 characters before rating."))),
                 React.createElement("label", { className: "check-row" },
                     React.createElement("input", { type: "checkbox", checked: form.spoiler, onChange: (e) => field("spoiler", e.target.checked) }),
                     "This post contains spoilers")),
             React.createElement("label", { className: "check-row" },
                 React.createElement("input", { required: true, type: "checkbox", checked: agree, onChange: (e) => setAgree(e.target.checked) }),
-                "These are my own words, and I agree to the community rules."))),
+                "These are my own words, I agree to the community rules, and this post contains no sensitive, explicit or non-consensual imagery."))),
         React.createElement("div", { className: "editor-footer" },
             React.createElement("p", null, storageWarning
                 ? "Draft storage unavailable. Keep a copy before closing."
                 : post
-                    ? "Editing sends the post back to moderation."
-                    : "Draft saved on this device. A moderator reviews each new post."),
+                    ? user?.role === "admin"
+                        ? "Administrator edits are published immediately."
+                        : "Editing sends the post back to moderation."
+                    : user?.role === "admin"
+                        ? "Administrator posts are published immediately."
+                        : "Draft saved on this device. A moderator reviews each new post."),
             React.createElement(Button, { form: "post-editor", type: "submit", busy: busy, disabled: !agree || preview },
-                "Send for review",
+                user?.role === "admin"
+                    ? post
+                        ? "Publish changes"
+                        : "Publish now"
+                    : "Send for review",
                 React.createElement(Icon, { name: "arrow", size: 16 })))));
 }

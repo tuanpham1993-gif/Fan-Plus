@@ -17,6 +17,7 @@ const Account = React.lazy(() => import("./pages/Account"));
 const Admin = React.lazy(() => import("./pages/Admin"));
 const Assistant = React.lazy(() => import("./features/Lore"));
 const Utility = React.lazy(() => import("./pages/Utility"));
+const MemberProfile = React.lazy(() => import("./pages/MemberProfile"));
 const Releases = React.lazy(() => import("./pages/Releases"));
 export class ErrorBoundary extends React.Component<
   {
@@ -126,6 +127,16 @@ export default function App() {
     );
   else if (pathname === "/community")
     page = <Community key={user?.id || "visitor"} />;
+  else if (
+    pathname.startsWith("/community/member/") &&
+    pathname.split("/").length === 4
+  )
+    page = (
+      <MemberProfile
+        key={pathname}
+        id={decodeURIComponent(pathname.slice(19))}
+      />
+    );
   else if (pathname === "/giveaways")
     page = <Giveaways key={user?.id || "visitor"} />;
   else if (pathname.startsWith("/knowledge/"))
@@ -142,7 +153,9 @@ export default function App() {
             ? "sitemap"
             : pathname === "/privacy"
               ? "privacy"
-              : "404"
+              : pathname === "/terms"
+                ? "terms"
+                : "404"
         }
       />
     );

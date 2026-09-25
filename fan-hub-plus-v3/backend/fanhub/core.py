@@ -2,7 +2,7 @@
 from __future__ import annotations
 import hashlib, hmac, re, secrets, unicodedata
 from datetime import datetime, timezone, timedelta
-from sqlalchemy import select, update, delete, or_
+from sqlalchemy import select, update, delete, or_, func
 from .models import User, Post, Comment, Reaction, Report, Audit, Campaign, Prize, Entry, Winner, now, uid
 
 class Fault(Exception):
@@ -46,11 +46,36 @@ def audit(db, user, target, event, detail=None):
 def public_user(u):
     if not u:
         return None
-    return {'id': u.id, 'name': u.name, 'email': u.email, 'role': u.role, 'suspended': u.suspended, 'verified': u.verified, 'avatar': '', 'bio': '', 'city': '', 'favoriteFandoms': [], 'favoriteCategories': [], 'createdAt': u.created_at}
+    return {'id': u.id, 'name': u.name, 'email': u.email, 'role': u.role, 'suspended': u.suspended, 'verified': u.verified, 'avatar': '', 'bio': u.bio, 'city': '', 'favoriteFandoms': u.favorite_fandoms, 'favoriteCategories': u.favorite_categories, 'createdAt': u.created_at}
+
+
+PROFILE_CATEGORIES = {'anime', 'gaming', 'movies', 'tv', 'kpop', 'comics', 'manga', 'cosplay'}
+
+
+def update_profile(db, user, data):
+    user = member(user)
+    fields(data, {'bio', 'favoriteCategories', 'favoriteFandoms'})
+    bio = text(data.get('bio', ''), 0, 500, 'Bio') if data.get('bio') else ''
+    categories = data.get('favoriteCategories', user.favorite_categories)
+    fandoms = data.get('favoriteFandoms', user.favorite_fandoms)
+    if not isinstance(categories, list) or not all(isinstance(c, str) and c in PROFILE_CATEGORIES for c in categories):
+        raise Fault('Choose your favorite categories from the list.')
+    if not isinstance(fandoms, list) or not all(isinstance(f, str) and 0 < len(f) <= 80 for f in fandoms) or len(fandoms) > 20:
+        raise Fault('Enter valid fandom names.')
+    user.bio, user.favorite_categories, user.favorite_fandoms = bio, categories, fandoms
+    return user
+
+
+def public_profile(db, user_id):
+    u = db.get(User, user_id)
+    if not u or u.suspended:
+        raise Fault('This member is not available.', 404)
+    posts = db.scalar(select(func.count(Post.id)).where(Post.author_id == u.id, Post.status == 'published'))
+    return {'id': u.id, 'name': u.name, 'role': u.role, 'bio': u.bio, 'favoriteCategories': u.favorite_categories, 'createdAt': u.created_at, 'publishedPosts': posts or 0}
 
 
 def public_post(db, p):
-    return {'id': p.id, 'authorId': p.author_id, 'authorName': db.get(User, p.author_id).name, 'title': p.title, 'subject': p.subject, 'body': p.body, 'topic': p.topic, 'spoiler': p.spoiler, 'rating': p.rating, 'status': p.status, 'reason': p.reason, 'version': p.version, 'createdAt': p.created_at, 'sample': p.sample}
+    return {'id': p.id, 'authorId': p.author_id, 'authorName': db.get(User, p.author_id).name, 'title': p.title, 'subject': p.subject, 'body': p.body, 'topic': p.topic, 'format': p.content_type, 'mediaUrl': p.media_url, 'spoiler': p.spoiler, 'rating': p.rating, 'status': p.status, 'reason': p.reason, 'version': p.version, 'createdAt': p.created_at, 'sample': p.sample}
 
 
 def social(db, user):
@@ -62,21 +87,100 @@ def social(db, user):
     comments = db.scalars(select(Comment).where(Comment.post_id.in_(ids)).order_by(Comment.created_at).limit(2000)).all() if ids else []
     reactions = db.scalars(select(Reaction).where(Reaction.post_id.in_(ids))).all() if ids else []
     reports = db.scalars(select(Report).order_by(Report.created_at.desc()).limit(250)).all() if user and user.role == 'admin' else []
-    return {'posts': [public_post(db, p) for p in posts], 'comments': [{'id': c.id, 'postId': c.post_id, 'authorId': c.author_id, 'authorName': db.get(User, c.author_id).name, 'body': '[Comment removed]' if c.hidden else c.body, 'parentId': c.parent_id, 'createdAt': c.created_at, 'hidden': c.hidden} for c in comments], 'reactions': [{'postId': r.post_id, 'userId': r.user_id, 'kind': r.kind} for r in reactions], 'reports': [{'id': r.id, 'postId': r.post_id, 'commentId': r.comment_id, 'userId': r.user_id, 'reason': r.reason, 'resolved': r.resolved} for r in reports]}
+    def public_report(r):
+        p = db.get(Post, r.post_id)
+        c = db.get(Comment, r.comment_id) if r.comment_id else None
+        reporter = db.get(User, r.user_id)
+        return {
+            'id': r.id, 'postId': r.post_id, 'commentId': r.comment_id, 'userId': r.user_id,
+            'reason': r.reason, 'resolved': r.resolved, 'createdAt': r.created_at,
+            'reporterName': reporter.name if reporter else 'Removed member',
+            'postTitle': p.title if p else 'Unavailable post',
+            'authorName': (db.get(User, (c or p).author_id).name if (c or p) else 'Unknown') if (c or p) else 'Unknown',
+            'contentPreview': (c.body if c else (p.body if p else ''))[:280],
+        }
+    return {'posts': [public_post(db, p) for p in posts], 'comments': [{'id': c.id, 'postId': c.post_id, 'authorId': c.author_id, 'authorName': db.get(User, c.author_id).name, 'body': '[Comment removed]' if c.hidden else c.body, 'parentId': c.parent_id, 'createdAt': c.created_at, 'hidden': c.hidden} for c in comments], 'reactions': [{'postId': r.post_id, 'userId': r.user_id, 'kind': r.kind} for r in reactions], 'reports': [public_report(r) for r in reports]}
+
+
+COMMUNITY_TOPICS = {'soundtrack', 'anime', 'gaming', 'movies', 'tv', 'kpop', 'comic', 'manga', 'cosplay'}
+POST_TYPES = {'post', 'video', 'soundtrack'}
+MEDIA_EXTENSIONS = {'video': {'.webm', '.mp4', '.mov'}, 'soundtrack': {'.wav', '.mp3', '.ogg'}}
+# Basic server-side heuristic: block obvious explicit/NSFW keywords instead of pixel-level
+# image analysis, which this kit does not have a model or third-party API for.
+SENSITIVE_KEYWORDS = {
+    'porn', 'pornographic', 'xxx', 'nsfw', 'nude', 'nudity', 'naked', 'sex tape', 'explicit content',
+    'hentai uncensored', 'fetish', 'onlyfans', 'gore', 'rape', 'child abuse', 'cp link', 'bestiality',
+}
+
+
+SENSITIVE_PATTERN = re.compile(r'\b(' + '|'.join(re.escape(w) for w in SENSITIVE_KEYWORDS) + r')\b')
+
+
+def contains_sensitive(*parts):
+    # Word-boundary match: a plain substring check would also flag innocuous words
+    # like "grape" or "therapeutic" for containing "rape".
+    blob = unicodedata.normalize('NFKD', ' '.join(p for p in parts if p)).lower()
+    return SENSITIVE_PATTERN.search(blob) is not None
+
+
+def media_url(value, post_type):
+    from urllib.parse import unquote, urlsplit
+    from pathlib import PurePosixPath
+    value = value.strip() if isinstance(value, str) else ''
+    if post_type == 'post':
+        if value:
+            raise Fault('A text post cannot include a media URL.')
+        return ''
+    if not value or len(value) > 500:
+        raise Fault('Video and soundtrack posts require a media URL.')
+    decoded = unquote(value)
+    ext = PurePosixPath(decoded.split('?', 1)[0]).suffix.lower()
+    if ext not in MEDIA_EXTENSIONS[post_type]:
+        raise Fault('Use a ' + '/'.join(sorted(MEDIA_EXTENSIONS[post_type])) + ' file for this post type.')
+    if value.startswith('/media/'):
+        if '\\' in value or '..' in decoded.split('/'):
+            raise Fault('Invalid local media path.')
+        return value
+    try:
+        parsed = urlsplit(value)
+    except ValueError:
+        raise Fault('Use a direct HTTPS media URL or a local /media/ path.')
+    if parsed.scheme != 'https' or not parsed.netloc or parsed.username or parsed.password:
+        raise Fault('Use a direct HTTPS media URL or a local /media/ path.')
+    return value
+
+
+def meaningful_body(body):
+    words = [w for w in re.split(r'\s+', body.strip()) if w]
+    if len(set(w.lower() for w in words)) < 4:
+        raise Fault('Write a real perspective, not repeated or filler text.')
+    if re.search(r'(.)\1{9,}', body):
+        raise Fault('Write a real perspective, not repeated or filler text.')
 
 
 def validate_post(data):
-    if data.get('topic') not in {'anime', 'movies', 'music'}:
-        raise Fault('Choose a supported topic.')
+    if data.get('topic') not in COMMUNITY_TOPICS:
+        raise Fault('Choose a supported community category.')
+    post_type = data.get('format', 'post')
+    if post_type not in POST_TYPES:
+        raise Fault('Choose Post, Video or Soundtrack.')
     if type(data.get('spoiler')) is not bool or type(data.get('rating')) is not int or not 0 <= data['rating'] <= 5:
         raise Fault('Invalid spoiler flag or rating.')
-    return dict(title=text(data.get('title'), 5, 140, 'Title'), subject=text(data.get('subject'), 1, 100, 'Subject'), body=text(data.get('body'), 20, 8000, 'Post'), topic=data['topic'], spoiler=data['spoiler'], rating=data['rating'])
+    title = text(data.get('title'), 5, 140, 'Title')
+    subject = text(data.get('subject'), 1, 100, 'Subject')
+    body = text(data.get('body'), 20, 8000, 'Post')
+    if data['rating'] > 0:
+        meaningful_body(body)
+    if contains_sensitive(title, subject, body, data.get('mediaUrl', '')):
+        raise Fault('This post cannot include sensitive or explicit content. Remove it and try again.')
+    return dict(title=title, subject=subject, body=body, topic=data['topic'], content_type=post_type, media_url=media_url(data.get('mediaUrl', ''), post_type), spoiler=data['spoiler'], rating=data['rating'])
 
 
 def save_post(db, user, data, post_id=None):
     member(user)
-    fields(data, {'title', 'subject', 'body', 'topic', 'spoiler', 'rating'} | ({'version'} if post_id else set()))
+    fields(data, {'title', 'subject', 'body', 'topic', 'format', 'mediaUrl', 'spoiler', 'rating'} | ({'version'} if post_id else set()))
     values = validate_post(data)
+    direct_publish = user.role == 'admin'
     if post_id:
         p = lock(db, Post, post_id)
         if p.author_id != user.id:
@@ -85,12 +189,12 @@ def save_post(db, user, data, post_id=None):
             raise Fault('The post changed. Refresh before editing.', 409)
         for k, v in values.items():
             setattr(p, k, v)
-        p.status, p.reason, p.version = 'pending', '', p.version + 1
+        p.status, p.reason, p.version = ('published' if direct_publish else 'pending'), '', p.version + 1
     else:
-        p = Post(author_id=user.id, **values)
+        p = Post(author_id=user.id, status='published' if direct_publish else 'pending', **values)
         db.add(p)
     db.flush()
-    audit(db, user, p.id, 'post.submitted')
+    audit(db, user, p.id, 'post.published_by_admin' if direct_publish else 'post.submitted')
     return public_post(db, p)
 
 

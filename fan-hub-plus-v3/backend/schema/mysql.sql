@@ -70,6 +70,9 @@ CREATE TABLE users (
 	`role` VARCHAR(12) NOT NULL, 
 	suspended BOOL NOT NULL, 
 	verified BOOL NOT NULL, 
+	bio VARCHAR(500) NOT NULL, 
+	favorite_categories JSON NOT NULL, 
+	favorite_fandoms JSON NOT NULL, 
 	created_at VARCHAR(32) NOT NULL, 
 	PRIMARY KEY (id), 
 	CHECK (role IN ('member','admin')), 
@@ -109,7 +112,9 @@ CREATE TABLE community_posts (
 	title VARCHAR(140) NOT NULL, 
 	subject VARCHAR(100) NOT NULL, 
 	body TEXT NOT NULL, 
-	topic VARCHAR(12) NOT NULL, 
+	topic VARCHAR(16) NOT NULL, 
+	content_type VARCHAR(12) NOT NULL, 
+	media_url VARCHAR(500) NOT NULL, 
 	spoiler BOOL NOT NULL, 
 	rating INTEGER NOT NULL, 
 	status VARCHAR(12) NOT NULL, 
@@ -118,7 +123,8 @@ CREATE TABLE community_posts (
 	sample BOOL NOT NULL, 
 	created_at VARCHAR(32) NOT NULL, 
 	PRIMARY KEY (id), 
-	CHECK (topic IN ('anime','movies','music')), 
+	CHECK (topic IN ('soundtrack','anime','gaming','movies','tv','kpop','comic','manga','cosplay')), 
+	CHECK (content_type IN ('post','video','soundtrack')), 
 	CHECK (rating BETWEEN 0 AND 5), 
 	CHECK (status IN ('pending','published','rejected','hidden')), 
 	FOREIGN KEY(author_id) REFERENCES users (id)
@@ -126,9 +132,24 @@ CREATE TABLE community_posts (
 
 ;
 CREATE INDEX ix_community_posts_status ON community_posts (status);
+CREATE INDEX ix_community_posts_created_at ON community_posts (created_at);
 CREATE INDEX ix_community_posts_topic ON community_posts (topic);
 CREATE INDEX ix_community_posts_author_id ON community_posts (author_id);
-CREATE INDEX ix_community_posts_created_at ON community_posts (created_at);
+
+CREATE TABLE email_verifications (
+	id VARCHAR(36) NOT NULL, 
+	user_id VARCHAR(36) NOT NULL, 
+	code_hash VARCHAR(64) NOT NULL, 
+	expires_at VARCHAR(32) NOT NULL, 
+	consumed BOOL NOT NULL, 
+	attempts INTEGER NOT NULL, 
+	created_at VARCHAR(32) NOT NULL, 
+	PRIMARY KEY (id), 
+	FOREIGN KEY(user_id) REFERENCES users (id)
+)
+
+;
+CREATE INDEX ix_email_verifications_user_id ON email_verifications (user_id);
 
 CREATE TABLE giveaway_entries (
 	ticket VARCHAR(32) NOT NULL, 

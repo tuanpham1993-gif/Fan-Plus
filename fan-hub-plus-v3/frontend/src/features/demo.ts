@@ -14,9 +14,13 @@ type StoredCampaign = Omit<Campaign, "entryCount" | "myEntry"> & {
   privateSeed: string;
   entries: Entry[];
 };
+type StoredReport = Pick<
+  SocialData["reports"][number],
+  "id" | "postId" | "commentId" | "userId" | "reason" | "resolved" | "createdAt" | "reporterName"
+>;
 interface State {
   schema: 3;
-  social: SocialData;
+  social: Omit<SocialData, "reports"> & { reports: StoredReport[] };
   campaigns: StoredCampaign[];
   chats: Record<string, Message[]>;
 }
@@ -24,8 +28,15 @@ const uid = (prefix: string) => prefix + "-" + crypto.randomUUID();
 function read(): State {
   try {
     const s = JSON.parse(localStorage.getItem(KEY) || "null");
-    if (s?.schema === 3 && s.social?.posts && Array.isArray(s.campaigns))
+    if (s?.schema === 3 && s.social?.posts && Array.isArray(s.campaigns)) {
+      s.social.posts = s.social.posts.map((p: any) => {
+        const topic = p.topic === "music" ? "soundtrack" : p.topic;
+        const format = p.format || (p.id === "post-sound" ? "soundtrack" : "post");
+        const mediaUrl = p.mediaUrl || (p.id === "post-sound" ? "/media/orbit.wav" : "");
+        return { ...p, topic, format, mediaUrl };
+      });
       return s;
+    }
   } catch {}
   return { schema: 3, social: initialSocial(), campaigns: [], chats: {} };
 }
@@ -112,9 +123,66 @@ export async function rankTickets(
     )
     .map((x) => x.ticket);
 }
+const COMMUNITY_TOPICS = [
+  "soundtrack",
+  "anime",
+  "gaming",
+  "movies",
+  "tv",
+  "kpop",
+  "comic",
+  "manga",
+  "cosplay",
+];
+const MEDIA_EXTENSIONS: Record<string, string[]> = {
+  video: [".webm", ".mp4", ".mov"],
+  soundtrack: [".wav", ".mp3", ".ogg"],
+};
+// Mirrors backend/fanhub/core.py's keyword-based heuristic; no pixel-level image
+// analysis is available in this kit, so explicit/NSFW text is blocked instead.
+const SENSITIVE_KEYWORDS = [
+  "porn", "pornographic", "xxx", "nsfw", "nude", "nudity", "naked", "sex tape",
+  "explicit content", "hentai uncensored", "fetish", "onlyfans", "gore", "rape",
+  "child abuse", "cp link", "bestiality",
+];
+const SENSITIVE_PATTERN = new RegExp(
+  "\\b(" + SENSITIVE_KEYWORDS.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|") + ")\\b",
+);
+function containsSensitive(...parts: string[]) {
+  // Word-boundary match: a plain substring check would also flag innocuous words
+  // like "grape" or "therapeutic" for containing "rape".
+  const blob = normalize(parts.filter(Boolean).join(" "));
+  return SENSITIVE_PATTERN.test(blob);
+}
+function meaningfulBody(body: string) {
+  const words = body.trim().split(/\s+/).filter(Boolean);
+  const unique = new Set(words.map((w) => w.toLowerCase()));
+  if (unique.size < 4 || /(.)\1{9,}/.test(body))
+    throw new Error("Write a real perspective, not repeated or filler text.");
+}
+function validMediaUrl(value: string, format: string) {
+  const url = value.trim();
+  const ext = url.split("?")[0].split("/").pop() || "";
+  const suffix = "." + (ext.split(".").pop() || "").toLowerCase();
+  if (!(MEDIA_EXTENSIONS[format] || []).includes(suffix)) return false;
+  if (url.startsWith("/media/") && !url.includes("\\") && !url.includes(".."))
+    return true;
+  try {
+    const parsed = new URL(url);
+    return (
+      parsed.protocol === "https:" &&
+      !parsed.username &&
+      !parsed.password
+    );
+  } catch {
+    return false;
+  }
+}
 function validPost(p: PostInput) {
-  if (!["anime", "movies", "music"].includes(p.topic))
-    throw new Error("Choose Anime, Movies or Music.");
+  if (!COMMUNITY_TOPICS.includes(p.topic))
+    throw new Error("Choose a supported community category.");
+  if (!["post", "video", "soundtrack"].includes(p.format))
+    throw new Error("Choose Post, Video or Soundtrack.");
   if (p.title.trim().length < 5 || p.title.length > 140)
     throw new Error("Use a title of 5-140 characters.");
   if (!p.subject.trim() || p.subject.length > 100)
@@ -123,6 +191,15 @@ function validPost(p: PostInput) {
     throw new Error("Write 20-8,000 characters.");
   if (!Number.isInteger(p.rating) || p.rating < 0 || p.rating > 5)
     throw new Error("Choose an optional rating from 1 to 5.");
+  if (p.rating > 0) meaningfulBody(p.body);
+  if (containsSensitive(p.title, p.subject, p.body, p.mediaUrl))
+    throw new Error(
+      "This post cannot include sensitive or explicit content. Remove it and try again.",
+    );
+  if (p.format === "post" && p.mediaUrl.trim())
+    throw new Error("A text post cannot include a media URL.");
+  if (p.format !== "post" && (!p.mediaUrl.trim() || p.mediaUrl.length > 500 || !validMediaUrl(p.mediaUrl, p.format)))
+    throw new Error("Use a direct HTTPS media URL or a local /media/ path.");
 }
 function findPost(
   s: State,
@@ -152,13 +229,32 @@ export const demo = {
         user?.role === "admin",
     );
     const ids = new Set(visible.map((p) => p.id));
+    const reports =
+      user?.role === "admin"
+        ? s.reports.map((r) => {
+            const post = s.posts.find((p) => p.id === r.postId);
+            const comment = r.commentId
+              ? s.comments.find((c) => c.id === r.commentId)
+              : undefined;
+            return {
+              ...r,
+              postTitle: post?.title || "Unavailable post",
+              authorName:
+                comment?.authorName || post?.authorName || "Unknown",
+              contentPreview: (comment?.body || post?.body || "").slice(
+                0,
+                280,
+              ),
+            };
+          })
+        : [];
     return {
       posts: visible,
       comments: s.comments
         .filter((c) => ids.has(c.postId))
         .map((c) => (c.hidden ? { ...c, body: "Comment removed." } : c)),
       reactions: s.reactions.filter((r) => ids.has(r.postId)),
-      reports: user?.role === "admin" ? s.reports : [],
+      reports,
     };
   },
   async post(
@@ -177,7 +273,11 @@ export const demo = {
       if (p.version !== version)
         throw new Error("This post changed. Reload it before editing.");
       Object.assign(p, input, {
-        status: "pending",
+        title: input.title.trim(),
+        subject: input.subject.trim(),
+        body: input.body.trim(),
+        mediaUrl: input.mediaUrl.trim(),
+        status: u.role === "admin" ? "published" : "pending",
         reason: "",
         version: p.version + 1,
       });
@@ -190,7 +290,8 @@ export const demo = {
         id: uid("post"),
         authorId: u.id,
         authorName: u.name,
-        status: "pending",
+        mediaUrl: input.mediaUrl.trim(),
+        status: u.role === "admin" ? "published" : "pending",
         reason: "",
         version: 1,
         createdAt: new Date().toISOString(),
@@ -315,6 +416,8 @@ export const demo = {
       userId: u.id,
       reason: reason.trim(),
       resolved: false,
+      createdAt: new Date().toISOString(),
+      reporterName: u.name,
     });
     write(s);
   },
@@ -337,6 +440,24 @@ export const demo = {
     }
     r.resolved = true;
     write(s);
+  },
+  async publicProfile(id: string) {
+    const s = read().social;
+    const post =
+      s.posts.find((p) => p.authorId === id) ||
+      s.comments.find((c) => c.authorId === id);
+    if (!post) throw new Error("This member is not available.");
+    return {
+      id,
+      name: (post as { authorName: string }).authorName,
+      role: id === "u-admin" ? "admin" : "member",
+      bio: "",
+      favoriteCategories: [],
+      createdAt: "",
+      publishedPosts: s.posts.filter(
+        (p) => p.authorId === id && p.status === "published",
+      ).length,
+    };
   },
   async campaigns() {
     const s = read();

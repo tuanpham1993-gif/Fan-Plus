@@ -3,9 +3,9 @@
 ## Executed results
 
 - **70 Node tests passed**, zero failures: retained catalog/domain/repository/HTTP-preview tests plus 23 V3 feature tests. Actual Node WebCrypto SHA-256 and HMAC are checked against an independent Node implementation. Emoji-pictograph scan covers application TS/TSX/CSS and original SVG illustrations.
-- **46 Python tests passed**, one **HTTP-test module skipped**. Tests cover SQLAlchemy/SQLite foreign-key-backed services, permissions, validation, moderation versions, unique reactions, comments, reports, entry policy, seed/snapshot integrity, one-time results, source filters, history isolation, password/session helpers, rate limits and mocked provider contracts.
+- **50 Python tests passed**, one **HTTP-test module skipped**. Tests cover SQLAlchemy/SQLite foreign-key-backed services, permissions, validation, moderation versions, unique reactions, comments, reports, entry policy, seed/snapshot integrity, one-time results, source filters, history isolation, password/session helpers, rate limits and mocked provider contracts.
 - **13 Chromium UI test groups passed**, zero uncaught page errors. The tests exercise original navigation, the member/admin publishing loop, reactions, comments/replies, text-only rendering of script-like input, Lore history/source/abstention, dialogs, entry/lock/draw and proof verification.
-- **25 route/viewport checks passed**: Home, Community, Giveaways, Lore and Explore at widths 320, 390, 768, 1024 and 1440. Three additional 320 px checks passed in light theme at 125% text size. Mobile Lore dialog was also checked.
+- **13 UI test groups passed**, including Community composer/category/media checks, admin moderation entry points, accessibility-oriented interactions and responsive viewport checks. The portable TypeScript build transpiled 28 modules successfully; the Node feature suite passed **71 tests**.
 - Portable frontend compilation succeeded. Strict semantic TypeScript checks succeeded for the V3 types, seed, browser simulator, HTTP client and gateway. Python files passed syntax compilation.
 - SQLAlchemy generated MySQL baseline DDL for **14 tables**. A separate local SQLite setup command was smoke-tested with seeded accounts/posts/knowledge and the current-quarter demo campaign.
 

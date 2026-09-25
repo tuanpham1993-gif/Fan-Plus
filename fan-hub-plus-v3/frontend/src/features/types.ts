@@ -1,4 +1,14 @@
-export type Topic = "anime" | "movies" | "music";
+export type Topic =
+  | "soundtrack"
+  | "anime"
+  | "gaming"
+  | "movies"
+  | "tv"
+  | "kpop"
+  | "comic"
+  | "manga"
+  | "cosplay";
+export type PostFormat = "post" | "video" | "soundtrack";
 export interface Author {
   id: string;
   name: string;
@@ -14,6 +24,8 @@ export interface Post {
   subject: string;
   body: string;
   topic: Topic;
+  format: PostFormat;
+  mediaUrl: string;
   spoiler: boolean;
   rating: number;
   status: "pending" | "published" | "rejected" | "hidden";
@@ -48,6 +60,11 @@ export interface SocialData {
     userId: string;
     reason: string;
     resolved: boolean;
+    createdAt: string;
+    reporterName: string;
+    postTitle: string;
+    authorName: string;
+    contentPreview: string;
   }[];
 }
 export interface Prize {
@@ -121,11 +138,22 @@ export interface ChatResult {
   mode: string;
   threadId?: string;
 }
+export interface PublicProfile {
+  id: string;
+  name: string;
+  role: string;
+  bio: string;
+  favoriteCategories: string[];
+  createdAt: string;
+  publishedPosts: number;
+}
 export interface PostInput {
   title: string;
   subject: string;
   body: string;
   topic: Topic;
+  format: PostFormat;
+  mediaUrl: string;
   spoiler: boolean;
   rating: number;
 }

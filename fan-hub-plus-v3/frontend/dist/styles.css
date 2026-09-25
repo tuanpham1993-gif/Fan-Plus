@@ -349,6 +349,11 @@ small {
   letter-spacing: 0.03em;
   background: var(--surface);
 }
+.verify-strip {
+  background: #fdf3d8;
+  color: #6b5116;
+  border-bottom-color: #e8d191;
+}
 .demo-strip > span,
 .demo-strip a {
   display: inline-flex;
@@ -5541,6 +5546,16 @@ td small {
   border-radius: 4px;
   color: var(--accent);
 }
+.post-format-badge {
+  border: 1px solid var(--line);
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  color: var(--muted);
+  background: var(--surface-2);
+  font-size: 0.58rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
 .post-body h2 {
   font-size: 1.52rem;
   line-height: 1.35;
@@ -5561,6 +5576,39 @@ td small {
 }
 .post-body .small-link {
   margin-top: 0.3rem;
+}
+.post-media {
+  margin: 0 1.55rem 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+.post-media-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 0.85rem;
+  color: var(--muted);
+  font-size: 0.66rem;
+  border-bottom: 1px solid var(--line);
+}
+.post-media.video video {
+  display: block;
+  width: 100%;
+  max-height: 480px;
+  background: #070a0c;
+}
+.post-media.soundtrack {
+  padding-bottom: 0.9rem;
+}
+.post-media.soundtrack .post-media-head {
+  margin-bottom: 0.8rem;
+}
+.post-media audio {
+  display: block;
+  width: calc(100% - 1.7rem);
+  margin: 0 auto;
 }
 .post-cover {
   position: relative;
@@ -5636,9 +5684,16 @@ td small {
 }
 .post-actions > button.active {
   color: var(--mint);
+  font-weight: 600;
 }
 .post-actions > button.heart {
   color: #e5a8a4;
+}
+.post-actions > button.reaction-btn svg {
+  transition: transform 0.15s ease;
+}
+.post-actions > button.reaction-btn.active svg {
+  transform: scale(1.15);
 }
 .post-spoiler {
   border: 1px dashed var(--line);
@@ -5886,6 +5941,22 @@ td small {
   margin: 1rem 0;
   font-size: 0.84rem;
 }
+.author-link {
+  color: inherit;
+  text-decoration: none;
+}
+.author-link:hover strong {
+  text-decoration: underline;
+}
+.report-preview {
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border-left: 3px solid var(--line);
+  background: var(--surface-2);
+  border-radius: 6px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
 .editor-top {
   display: flex;
   justify-content: space-between;
@@ -5934,6 +6005,13 @@ td small {
 .editor-preview p {
   font-size: 0.89rem;
   line-height: 1.9;
+}
+.editor-preview-media {
+  display: block;
+  width: 100%;
+  max-height: 420px;
+  margin-top: 1.2rem;
+  border-radius: 8px;
 }
 /* Lore: no floating button, no overlap with content or reward actions. */
 .lore-workspace {
@@ -7483,6 +7561,9 @@ td small {
   }
   .post-subject {
     font-size: 0.63rem;
+  }
+  .post-media {
+    margin: 0 1rem 1rem;
   }
   .post-cover {
     margin: 0 1rem 1rem;
