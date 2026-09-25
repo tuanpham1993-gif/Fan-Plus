@@ -1,7 +1,10 @@
-from flask import Blueprint, request, jsonify
+from datetime import datetime
+from flask import Blueprint, request, jsonify, g
 from extensions import db
-from models import User, Role
-from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+from models import User, RefreshToken
+from utils.password_utils import validate_password_complexity, hash_password, verify_password
+from utils.jwt_utils import generate_access_token, generate_and_save_refresh_token
+from middleware.auth_middleware import token_required
 import re
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
@@ -9,49 +12,40 @@ auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 @auth_bp.route('/register', methods=['POST'])
 def register():
     data = request.get_json() or {}
-    username = data.get('username', '').strip()
+    name = data.get('name', '').strip()
     email = data.get('email', '').strip().lower()
     password = data.get('password', '')
-    full_name = data.get('full_name', '').strip()
 
-    if not username or not email or not password:
-        return jsonify({'error': 'Username, email and password are required'}), 400
-
-    if len(username) < 3:
-        return jsonify({'error': 'Username must be at least 3 characters'}), 400
-
-    if len(password) < 6:
-        return jsonify({'error': 'Password must be at least 6 characters'}), 400
+    if not name or not email or not password:
+        return jsonify({'message': 'Vui lòng nhập đầy đủ Tên, Email và Mật khẩu'}), 400
 
     email_regex = r'^[\w\.-]+@[\w\.-]+\.\w+$'
     if not re.match(email_regex, email):
-        return jsonify({'error': 'Invalid email format'}), 400
+        return jsonify({'message': 'Định dạng email không hợp lệ'}), 400
 
-    if User.query.filter_by(username=username).first():
-        return jsonify({'error': 'Username is already taken'}), 400
+    # Validate password complexity
+    is_valid_pw, pw_error = validate_password_complexity(password)
+    if not is_valid_pw:
+        return jsonify({'message': pw_error}), 400
 
-    if User.query.filter_by(email=email).first():
-        return jsonify({'error': 'Email is already registered'}), 400
+    # Check if email already exists
+    existing_user = User.query.filter_by(email=email).first()
+    if existing_user:
+        return jsonify({'message': 'Email đã tồn tại'}), 409
 
-    user_role = Role.query.filter_by(name='User').first()
-    role_id = user_role.id if user_role else 2
-
+    # Create new user
     user = User(
-        username=username,
+        name=name,
         email=email,
-        full_name=full_name or username,
-        role_id=role_id
+        password_hash=hash_password(password),
+        role='user',
+        status='active'
     )
-    user.set_password(password)
-
     db.session.add(user)
     db.session.commit()
 
-    access_token = create_access_token(identity=str(user.id))
-
     return jsonify({
-        'message': 'User registered successfully',
-        'access_token': access_token,
+        'message': 'Đăng ký tài khoản thành công',
         'user': user.to_dict()
     }), 201
 
@@ -59,38 +53,70 @@ def register():
 @auth_bp.route('/login', methods=['POST'])
 def login():
     data = request.get_json() or {}
-    identifier = data.get('username_or_email', '').strip()
+    email = data.get('email', '').strip().lower()
     password = data.get('password', '')
 
-    if not identifier or not password:
-        return jsonify({'error': 'Username/email and password are required'}), 400
+    if not email or not password:
+        return jsonify({'message': 'Vui lòng nhập Email và Mật khẩu'}), 400
 
-    user = User.query.filter(
-        (User.username == identifier) | (User.email == identifier.lower())
-    ).first()
+    user = User.query.filter_by(email=email).first()
+    if not user or not verify_password(user.password_hash, password):
+        return jsonify({'message': 'Email hoặc mật khẩu không chính xác'}), 401
 
-    if not user or not user.check_password(password):
-        return jsonify({'error': 'Invalid credentials'}), 401
+    if user.status != 'active':
+        return jsonify({'message': 'Tài khoản đã bị tạm khóa hoặc ngưng hoạt động'}), 401
 
-    access_token = create_access_token(identity=str(user.id))
+    # Generate tokens
+    access_token = generate_access_token(user.id, user.role)
+    refresh_token = generate_and_save_refresh_token(user.id)
 
     return jsonify({
-        'message': 'Login successful',
         'access_token': access_token,
+        'refresh_token': refresh_token,
         'user': user.to_dict()
+    }), 200
+
+
+@auth_bp.route('/refresh', methods=['POST'])
+def refresh():
+    data = request.get_json() or {}
+    token_str = data.get('refresh_token', '').strip()
+
+    if not token_str:
+        return jsonify({'message': 'Thiếu refresh_token trong request'}), 400
+
+    token_record = RefreshToken.query.filter_by(token=token_str).first()
+    if not token_record or not token_record.is_active():
+        return jsonify({'message': 'Refresh Token không hợp lệ hoặc đã bị đứt hạn / thu hồi'}), 401
+
+    user = User.query.get(token_record.user_id)
+    if not user or user.status != 'active':
+        return jsonify({'message': 'Tài khoản không hợp lệ hoặc bị tạm khóa'}), 401
+
+    # Generate new access token
+    new_access_token = generate_access_token(user.id, user.role)
+    return jsonify({
+        'access_token': new_access_token
     }), 200
 
 
 @auth_bp.route('/logout', methods=['POST'])
 def logout():
-    return jsonify({'message': 'Logged out successfully'}), 200
+    data = request.get_json() or {}
+    token_str = data.get('refresh_token', '').strip()
+
+    if token_str:
+        token_record = RefreshToken.query.filter_by(token=token_str).first()
+        if token_record and token_record.revoked_at is None:
+            token_record.revoked_at = datetime.utcnow()
+            db.session.commit()
+
+    return jsonify({'message': 'Đăng xuất thành công'}), 200
 
 
 @auth_bp.route('/me', methods=['GET'])
-@jwt_required()
+@token_required
 def get_me():
-    user_id = get_jwt_identity()
-    user = User.query.get(int(user_id))
-    if not user:
-        return jsonify({'error': 'User not found'}), 44
-    return jsonify({'user': user.to_dict()}), 200
+    return jsonify({
+        'user': g.current_user.to_dict()
+    }), 200
