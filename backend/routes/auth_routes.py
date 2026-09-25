@@ -16,15 +16,16 @@ def register():
     name = data.get('name', '').strip()
     email = data.get('email', '').strip().lower()
     password = data.get('password', '')
-    captcha_token = data.get('captcha_token', '').strip()
+    
+    #captcha_token = data.get('captcha_token', '').strip()
 
     if not name or not email or not password:
         return jsonify({'message': 'Vui lòng nhập đầy đủ Tên, Email và Mật khẩu'}), 400
 
     # 1. Verify CAPTCHA token first before creating user
-    is_captcha_valid, captcha_err = verify_recaptcha(captcha_token)
-    if not is_captcha_valid:
-        return jsonify({'message': captcha_err}), 400
+    #is_captcha_valid, captcha_err = verify_recaptcha(captcha_token)
+    #if not is_captcha_valid:
+    #    return jsonify({'message': captcha_err}), 400
 
     # 2. Email format validation
     email_regex = r'^[\w\.-]+@[\w\.-]+\.\w+$'
@@ -63,15 +64,15 @@ def login():
     data = request.get_json() or {}
     email = data.get('email', '').strip().lower()
     password = data.get('password', '')
-    captcha_token = data.get('captcha_token', '').strip()
+    #captcha_token = data.get('captcha_token', '').strip()
 
     if not email or not password:
         return jsonify({'message': 'Vui lòng nhập Email và Mật khẩu'}), 400
 
     # 1. Verify CAPTCHA token first before authenticating user
-    is_captcha_valid, captcha_err = verify_recaptcha(captcha_token)
-    if not is_captcha_valid:
-        return jsonify({'message': captcha_err}), 400
+    #is_captcha_valid, captcha_err = verify_recaptcha(captcha_token)
+    #if not is_captcha_valid:
+    #    return jsonify({'message': captcha_err}), 400
 
     # 2. Verify User & Password
     user = User.query.filter_by(email=email).first()
