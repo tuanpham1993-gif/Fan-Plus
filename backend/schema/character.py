@@ -27,4 +27,4 @@ class CharacterResponse(BaseModel):
     category_id: int
     created_at: datetime
     updated_at: datetime
->>>>>>> HoaSaving
+
