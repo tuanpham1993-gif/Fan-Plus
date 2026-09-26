@@ -1,34 +1,36 @@
-from extensions import db
 from datetime import datetime, timezone
+
+from extensions import db
 
 
 class Character(db.Model):
     __tablename__ = "characters"
 
-    id = db.Column(
+    character_id = db.Column(
         db.Integer,
-        primary_key=True
-    )
-
-    name = db.Column(
-        db.String(255),
-        nullable=False
-    )
-
-    description = db.Column(
-        db.Text,
-        nullable=False
-    )
-
-    image_url = db.Column(
-        db.String(500),
-        nullable=False
+        primary_key=True,
+        autoincrement=True
     )
 
     category_id = db.Column(
         db.Integer,
         db.ForeignKey("categories.category_id"),
         nullable=False
+    )
+
+    name = db.Column(
+        db.String(150),
+        nullable=False
+    )
+
+    bio = db.Column(
+        db.Text,
+        nullable=True
+    )
+
+    image_url = db.Column(
+        db.String(500),
+        nullable=True
     )
 
     created_at = db.Column(
@@ -42,12 +44,29 @@ class Character(db.Model):
         onupdate=lambda: datetime.now(timezone.utc)
     )
 
+    # Character thuộc Category
+    category = db.relationship(
+        "Category",
+        back_populates="characters"
+    )
+
+    # Character <-> CharacterContent
     character_contents = db.relationship(
         "CharacterContent",
-        back_populates="character",
-        cascade="all, delete-orphan"
+        back_populates="character"
     )
-    category = db.relationship(
-    "Category",
-    back_populates="characters"
-)
+
+    # Character <-> Merchandise
+    merchandise_items = db.relationship(
+        "MerchandiseItem",
+        backref="character"
+    )
+
+    def to_dict(self):
+        return {
+            "character_id": self.character_id,
+            "category_id": self.category_id,
+            "name": self.name,
+            "bio": self.bio,
+            "image_url": self.image_url
+        }

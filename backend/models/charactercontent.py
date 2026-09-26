@@ -4,7 +4,10 @@ from extensions import db
 class CharacterContent(db.Model):
     __tablename__ = "character_content"
 
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
 
     content_id = db.Column(
         db.Integer,
@@ -14,13 +17,7 @@ class CharacterContent(db.Model):
 
     character_id = db.Column(
         db.Integer,
-        db.ForeignKey("characters.id"),
-        nullable=False
-    )
-
-    character_id = db.Column(
-        db.Integer,
-        db.ForeignKey("characters.id"),
+        db.ForeignKey("characters.character_id"),
         nullable=False
     )
 
