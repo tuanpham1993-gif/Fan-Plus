@@ -1,6 +1,5 @@
 from extensions import db
 
-
 class Category(db.Model):
     __tablename__ = "categories"
 
@@ -26,4 +25,3 @@ class Category(db.Model):
         "Character",
         back_populates="category"
     )
-
