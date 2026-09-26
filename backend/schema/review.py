@@ -4,7 +4,7 @@ from typing import Optional
 
 
 class ReviewCreate(BaseModel):
-    user_id: int
+    user_id: int | None
     content_id: int
     rating: int = Field(ge=0, le=5)
     comment: Optional[str] = None

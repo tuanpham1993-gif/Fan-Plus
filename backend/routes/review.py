@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
-
+from middleware.auth_middleware import admin_required, token_required
+from flask import Blueprint, request, jsonify, g
 from schema.review import (
     ReviewCreate,
     ReviewUpdate,
@@ -23,13 +24,14 @@ review_bp = Blueprint(
 
 
 @review_bp.post("")
+@token_required
 def create_review_api():
-    # Temporary
-    user_id = 1
+    user_id = g.current_user_id
 
     data = ReviewCreate.model_validate(
         request.get_json()
     )
+    data.user_id = user_id
 
     review = create_review(
         user_id=data.user_id,
@@ -80,7 +82,21 @@ def get_reviews_by_content_api(content_id):
     ]), 200
 
 @review_bp.patch("/<int:review_id>")
+@token_required
 def update_review_api(review_id):
+    user_id = g.current_user_id
+    review = get_review(review_id=review_id)
+
+    if review is None:
+        return jsonify({
+            "message": "Review not found"
+        }), 404
+
+    if(user_id != review.user_id):
+        return jsonify({
+            "message": "Comment your reviews"
+        }), 403
+    
     data = ReviewUpdate.model_validate(
         request.get_json()
     )
@@ -91,11 +107,6 @@ def update_review_api(review_id):
         comment=data.comment
     )
 
-    if review is None:
-        return jsonify({
-            "message": "Review not found"
-        }), 404
-
     return jsonify(
         ReviewResponse
         .model_validate(review)
@@ -104,6 +115,7 @@ def update_review_api(review_id):
 
 
 @review_bp.delete("/<int:review_id>")
+@token_required
 def delete_review_api(review_id):
     review = delete_review(review_id)
 

@@ -1,4 +1,6 @@
 from flask import Blueprint, request, jsonify
+from middleware.auth_middleware import token_required
+from flask import Blueprint, request, jsonify, g
 
 from schema.bookmark import (
     BookmarkCreate,
@@ -12,18 +14,13 @@ from crud.bookmark import (
     delete_bookmark
 )
 
-bookmark_bp = Blueprint(
-    "bookmark",
-    __name__,
-    url_prefix="/bookmarks"
-)
+bookmark_bp = Blueprint("bookmark",__name__,url_prefix="/bookmarks")
 
 # POST /bookmarks
 @bookmark_bp.post("")
+@token_required
 def create_bookmark_api():
-    # Temporary:
-    # replace this with authenticated user later
-    user_id = 2
+    user_id = g.current_user.id
 
     data = BookmarkCreate.model_validate(
         request.get_json()
@@ -42,11 +39,10 @@ def create_bookmark_api():
 
 # GET /bookmarks
 @bookmark_bp.get("")
+@token_required
 def get_bookmarks_api():
 
-    # Temporary:
-    # replace this with authenticated user later
-    user_id = 1
+    user_id = g.current_user.id
 
     skip = request.args.get(
         "skip",
@@ -75,11 +71,9 @@ def get_bookmarks_api():
 
 # GET /bookmarks/<content_id>
 @bookmark_bp.get("/<int:content_id>")
+@token_required
 def get_bookmark_api(content_id):
-
-    # Temporary:
-    user_id = 1
-
+    user_id = g.current_user.id
     bookmark = get_bookmark(
         user_id=user_id,
         content_id=content_id
@@ -99,11 +93,10 @@ def get_bookmark_api(content_id):
 
 # DELETE /bookmarks/<content_id>
 @bookmark_bp.delete("/<int:content_id>")
+@token_required
 def delete_bookmark_api(content_id):
 
-    # Temporary:
-    # replace this with authenticated user later
-    user_id = 1
+    user_id = g.current_user.id
 
     bookmark = delete_bookmark(
         user_id=user_id,

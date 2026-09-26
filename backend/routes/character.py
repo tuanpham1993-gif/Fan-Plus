@@ -1,7 +1,7 @@
 
 from flask import Blueprint, request, jsonify
 from services.media import save_file
-
+from middleware.auth_middleware import admin_required, token_required
 from schema.character import (
     CharacterCreate,
     CharacterResponse
@@ -21,6 +21,7 @@ character_bp = Blueprint(
 
 
 @character_bp.post("")
+@token_required
 def create_character_api():
     name = request.form.get("name")
     description = request.form.get("description")
@@ -55,7 +56,6 @@ def create_character_api():
 @character_bp.get("/<int:character_id>")
 def get_character_api(character_id):
     character = get_character(character_id)
-
     if character is None:
         return jsonify({
             "message": "Character not found"

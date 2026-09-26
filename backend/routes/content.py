@@ -3,7 +3,8 @@ from crud.mediaContent import get_medias, create_media
 from schema.mediaContent import ContentMediaResponse
 from services.media import save_file
 from crud.charactercontent import get_characters_by_content
-
+from middleware.auth_middleware import admin_required, token_required
+from flask import Blueprint, request, jsonify, g
 from crud.content import (
     create_content,
     get_content,
@@ -76,14 +77,15 @@ def get_one(content_id):
     }), 200
 
 @content_bp.post("")
+@token_required
 def create():
     category_id = request.form.get("category_id", type=int)
     title = request.form.get("title")
     body = request.form.get("body")
     content_type = request.form.get("content_type")
-
+    user_id = g.current_user_id
     content = create_content(
-        author_id=1,  # Temporary
+        author_id=user_id,
         category_id=category_id,
         title=title,
         body=body,
@@ -125,9 +127,9 @@ def create():
     }), 201
 
 @content_bp.post("/<int:content_id>/reactions")
+@token_required
 def react_to_content(content_id):
-    # Temporary
-    user_id = 3
+    user_id = g.current_user_id
 
     content = get_content(content_id)
 
@@ -219,6 +221,7 @@ def get_list():
     }), 200
 
 @content_bp.patch("/<int:content_id>")
+@token_required
 def update(content_id):
     data = ContentUpdate.model_validate(request.json)
     content = update_content(
@@ -239,6 +242,7 @@ def update(content_id):
     return jsonify(response.model_dump()), 200
 
 @content_bp.delete("/<int:content_id>")
+@admin_required
 def delete(content_id):
     content = get_content(content_id)
     if content is None:

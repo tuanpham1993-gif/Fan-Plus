@@ -8,6 +8,8 @@ from crud.event import (
     update_event,
     delete_event
 )
+from middleware.auth_middleware import admin_required, token_required
+from flask import Blueprint, request, jsonify, g
 from crud.content import delete_content
 from extensions import db
 from schema.mediaContent import ContentMediaResponse
@@ -64,6 +66,7 @@ def get_events_api():
 
 # POST /events
 @event_bp.post("")
+@token_required
 def create_event_api():
     category_id = request.form.get("category_id",type=int)
     title = request.form.get("title")
@@ -86,9 +89,9 @@ def create_event_api():
             )
         }), 400
     
-    #Temporary
+    user_id = g.current_user_id
     content = create_content(
-        author_id=1, category_id=category_id,
+        author_id=user_id, category_id=category_id,
         title=title,body=body,
         content_type="EVENT"
     )
@@ -139,6 +142,7 @@ def create_event_api():
 
 # PUT /events/<event_id>
 @event_bp.put("/<int:event_id>")
+@token_required
 def update_event_api(event_id):
 
     event = get_event(event_id)
@@ -171,6 +175,7 @@ def update_event_api(event_id):
 
 # DELETE /events/<event_id>
 @event_bp.delete("/<int:event_id>")
+@admin_required
 def delete_event_api(event_id):
     event = get_event(event_id=event_id)
 
