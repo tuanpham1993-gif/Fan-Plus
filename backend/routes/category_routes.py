@@ -1,102 +1,81 @@
 from flask import Blueprint, request, jsonify
-from extensions import db
-from models import Category, User
-from flask_jwt_extended import jwt_required, get_jwt_identity
-import re
+from crud import category_crud
+from schema.category_schema import validate_category_data
+from middleware.auth_middleware import admin_required
 
 category_bp = Blueprint('category', __name__, url_prefix='/api/categories')
 
-def is_admin(user_id):
-    u = User.query.get(int(user_id))
-    return u and u.role and u.role.name == 'Admin'
-
-def slugify(text):
-    text = text.lower().strip()
-    text = re.sub(r'[^\w\s-]', '', text)
-    return re.sub(r'[\s_-]+', '-', text)
-
 @category_bp.route('', methods=['GET'])
 def get_categories():
-    categories = Category.query.order_by(Category.name.asc()).all()
+    categories = category_crud.get_all_categories()
     return jsonify({'categories': [c.to_dict() for c in categories]}), 200
 
 @category_bp.route('/<int:cat_id>', methods=['GET'])
 def get_category_detail(cat_id):
-    category = Category.query.get(cat_id)
+    category = category_crud.get_category_by_id(cat_id)
     if not category:
         return jsonify({'error': 'Category not found'}), 404
     return jsonify({'category': category.to_dict()}), 200
 
 @category_bp.route('', methods=['POST'])
-@jwt_required()
+@admin_required
 def create_category():
-    current_user_id = get_jwt_identity()
-    if not is_admin(current_user_id):
-        return jsonify({'error': 'Admin privilege required'}), 403
+    data = request.get_json(silent=True) or {}
+    is_valid, err_msg = validate_category_data(data, is_update=False)
+    if not is_valid:
+        return jsonify({'error': err_msg}), 400
 
-    data = request.get_json() or {}
     name = data.get('name', '').strip()
     description = data.get('description', '').strip()
     icon = data.get('icon', 'folder').strip()
+    slug = category_crud.slugify(name)
 
-    if not name:
-        return jsonify({'error': 'Category name is required'}), 400
-
-    slug = slugify(name)
-    if Category.query.filter((Category.name == name) | (Category.slug == slug)).first():
+    if category_crud.check_category_exists(name, slug):
         return jsonify({'error': 'Category with this name or slug already exists'}), 400
 
-    category = Category(
+    category = category_crud.create_category(
         name=name,
         slug=slug,
         description=description,
         icon=icon
     )
-    db.session.add(category)
-    db.session.commit()
 
     return jsonify({'message': 'Category created successfully', 'category': category.to_dict()}), 201
 
 @category_bp.route('/<int:cat_id>', methods=['PUT'])
-@jwt_required()
+@admin_required
 def update_category(cat_id):
-    current_user_id = get_jwt_identity()
-    if not is_admin(current_user_id):
-        return jsonify({'error': 'Admin privilege required'}), 403
-
-    category = Category.query.get(cat_id)
+    category = category_crud.get_category_by_id(cat_id)
     if not category:
         return jsonify({'error': 'Category not found'}), 404
 
-    data = request.get_json() or {}
-    if 'name' in data and data['name'].strip():
-        new_name = data['name'].strip()
-        new_slug = slugify(new_name)
-        existing = Category.query.filter(Category.id != cat_id, (Category.name == new_name) | (Category.slug == new_slug)).first()
-        if existing:
-            return jsonify({'error': 'Category with this name already exists'}), 400
-        category.name = new_name
-        category.slug = new_slug
+    data = request.get_json(silent=True) or {}
+    is_valid, err_msg = validate_category_data(data, is_update=True)
+    if not is_valid:
+        return jsonify({'error': err_msg}), 400
 
-    if 'description' in data:
-        category.description = data['description'].strip()
-    if 'icon' in data:
-        category.icon = data['icon'].strip()
+    new_name = data.get('name', '').strip() if 'name' in data else None
+    new_slug = category_crud.slugify(new_name) if new_name else None
 
-    db.session.commit()
-    return jsonify({'message': 'Category updated successfully', 'category': category.to_dict()}), 200
+    if new_name and category_crud.check_category_exists(new_name, new_slug, exclude_id=cat_id):
+        return jsonify({'error': 'Category with this name already exists'}), 400
+
+    updated = category_crud.update_category(
+        category=category,
+        name=new_name,
+        slug=new_slug,
+        description=data.get('description', '').strip() if 'description' in data else None,
+        icon=data.get('icon', '').strip() if 'icon' in data else None
+    )
+
+    return jsonify({'message': 'Category updated successfully', 'category': updated.to_dict()}), 200
 
 @category_bp.route('/<int:cat_id>', methods=['DELETE'])
-@jwt_required()
+@admin_required
 def delete_category(cat_id):
-    current_user_id = get_jwt_identity()
-    if not is_admin(current_user_id):
-        return jsonify({'error': 'Admin privilege required'}), 403
-
-    category = Category.query.get(cat_id)
+    category = category_crud.get_category_by_id(cat_id)
     if not category:
         return jsonify({'error': 'Category not found'}), 404
 
-    db.session.delete(category)
-    db.session.commit()
+    category_crud.delete_category(category)
     return jsonify({'message': 'Category deleted successfully'}), 200

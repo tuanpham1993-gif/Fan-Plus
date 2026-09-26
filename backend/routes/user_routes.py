@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, g
-from extensions import db
+from crud import user_crud
 from middleware.auth_middleware import token_required
 
 user_bp = Blueprint('user', __name__, url_prefix='/api/users')
@@ -15,15 +15,25 @@ def get_user_profile():
 @token_required
 def update_user_profile():
     user = g.current_user
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
 
-    if 'name' in data and data['name'].strip():
-        user.name = data['name'].strip()
-    if 'avatar' in data:
-        user.avatar = data['avatar'].strip() if data['avatar'] else None
+    updated_user = user_crud.update_user_profile(
+        user=user,
+        name=data.get('name'),
+        avatar=data.get('avatar'),
+        favorite_fandoms=data.get('favorite_fandoms'),
+        display_preferences=data.get('display_preferences')
+    )
 
-    db.session.commit()
     return jsonify({
         'message': 'Cập nhật hồ sơ cá nhân thành công',
-        'user': user.to_dict()
+        'user': updated_user.to_dict()
     }), 200
+
+@user_bp.route('/dashboard', methods=['GET'])
+@token_required
+def get_dashboard():
+    dashboard_data = user_crud.get_user_dashboard(g.current_user.id)
+    if not dashboard_data:
+        return jsonify({'error': 'User not found'}), 404
+    return jsonify(dashboard_data), 200

@@ -12,7 +12,6 @@ class RefreshToken(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def is_active(self):
-        """Token is active if not revoked and not expired"""
         if self.revoked_at is not None:
             return False
         return datetime.utcnow() < self.expires_at

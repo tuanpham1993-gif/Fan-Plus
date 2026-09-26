@@ -1,45 +1,41 @@
-from flask import Blueprint, jsonify
-from extensions import db
-from models import User, Content, Category, Bookmark, Feedback, Character
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask import Blueprint, request, jsonify
+from crud import admin_crud, feedback_crud
+from middleware.auth_middleware import admin_required
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
 
-def is_admin(user_id):
-    u = User.query.get(int(user_id))
-    return u and u.role and u.role.name == 'Admin'
-
 @admin_bp.route('/stats', methods=['GET'])
-@jwt_required()
+@admin_required
 def get_admin_stats():
-    current_user_id = get_jwt_identity()
-    if not is_admin(current_user_id):
-        return jsonify({'error': 'Admin privilege required'}), 403
+    stats_data = admin_crud.get_admin_stats()
+    return jsonify(stats_data), 200
 
-    total_users = User.query.count()
-    total_contents = Content.query.count()
-    total_categories = Category.query.count()
-    total_bookmarks = Bookmark.query.count()
-    total_characters = Character.query.count()
-    pending_feedback = Feedback.query.filter_by(status='pending').count()
-    
-    # Calculate aggregate views
-    contents = Content.query.all()
-    total_views = sum(c.view_count for c in contents)
+@admin_bp.route('/feedback', methods=['GET'])
+@admin_required
+def get_all_feedback():
+    status = request.args.get('status', type=str)
+    feedbacks = feedback_crud.get_feedbacks(status=status)
+    return jsonify({
+        'count': len(feedbacks),
+        'feedbacks': [f.to_dict() for f in feedbacks]
+    }), 200
 
-    recent_contents = [c.to_dict(include_full=False) for c in Content.query.order_by(Content.created_at.desc()).limit(5).all()]
-    recent_users = [u.to_dict() for u in User.query.order_by(User.created_at.desc()).limit(5).all()]
+@admin_bp.route('/feedback/<int:feedback_id>', methods=['PUT'])
+@admin_required
+def update_feedback_status(feedback_id):
+    fb = feedback_crud.get_feedback_by_id(feedback_id)
+    if not fb:
+        return jsonify({'error': 'Feedback not found'}), 404
+
+    data = request.get_json(silent=True) or {}
+    new_status = data.get('status', '').strip().lower()
+
+    if new_status not in ['pending', 'resolved', 'dismissed']:
+        return jsonify({'error': 'Trạng thái không hợp lệ (Chỉ chấp nhận: pending, resolved, dismissed)'}), 400
+
+    updated_fb = feedback_crud.update_feedback_status(fb, new_status)
 
     return jsonify({
-        'stats': {
-            'total_users': total_users,
-            'total_contents': total_contents,
-            'total_categories': total_categories,
-            'total_bookmarks': total_bookmarks,
-            'total_characters': total_characters,
-            'pending_feedback': pending_feedback,
-            'total_views': total_views
-        },
-        'recent_contents': recent_contents,
-        'recent_users': recent_users
+        'message': f'Cập nhật trạng thái phản hồi thành {new_status} thành công',
+        'feedback': updated_fb.to_dict()
     }), 200

@@ -3,12 +3,12 @@ from models.user import User
 from utils.password_utils import hash_password
 
 def seed_database():
-    """Seed default admin user if database is empty"""
+    """Seed default admin and user if database is empty"""
     try:
         if User.query.count() == 0:
             admin_user = User(
                 name='Administrator',
-                email='admin@fanplus.com',
+                email='admin@fanhub.com',
                 password_hash=hash_password('Admin1234@'),
                 role='admin',
                 status='active'

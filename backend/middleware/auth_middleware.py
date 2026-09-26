@@ -8,13 +8,13 @@ def token_required(f):
     def decorated(*args, **kwargs):
         auth_header = request.headers.get('Authorization')
         if not auth_header or not auth_header.startswith('Bearer '):
-            return jsonify({'message': 'Thiếu Access Token xác thực'}), 401
+            return jsonify({'message': 'Vui lòng đăng nhập để truy cập đường dẫn này (Thiếu Token xác thực)'}), 401
 
         token = auth_header.split(' ')[1]
         payload, error = decode_access_token(token)
         
         if error:
-            return jsonify({'message': error}), 401
+            return jsonify({'message': f'Phiên đăng nhập không hợp lệ hoặc đã hết hạn ({error})'}), 401
 
         user_id = payload.get('user_id')
         user = User.query.get(user_id)
@@ -25,7 +25,6 @@ def token_required(f):
         if user.status != 'active':
             return jsonify({'message': 'Tài khoản đã bị tạm khóa hoặc ngưng hoạt động'}), 401
 
-        # Attach current_user to Flask context g
         g.current_user = user
         return f(*args, **kwargs)
     return decorated

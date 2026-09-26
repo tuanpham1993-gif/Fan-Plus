@@ -34,7 +34,7 @@ class Content(db.Model):
             'character_id': self.character_id,
             'character_name': self.character.name if self.character else None,
             'author_id': self.author_id,
-            'author_name': self.author.full_name or self.author.username if self.author else 'Fan Hub Team',
+            'author_name': self.author.name if self.author else 'Fan Hub Team',
             'view_count': self.view_count,
             'featured': bool(self.featured),
             'tags': [t.strip() for t in self.tags.split(',')] if self.tags else [],
