@@ -49,8 +49,8 @@ def create_app():
     with app.app_context():
         try:
             db.create_all()
-            seed_database()
-            print("Database initialized and seeded successfully!")
+            #seed_database()
+            #print("Database initialized and seeded successfully!")
         except Exception as err:
             print(f"Database init warning: {err}")
 

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import json
 from datetime import datetime
 from extensions import db
@@ -40,3 +41,4 @@ class User(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
+
