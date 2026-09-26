@@ -24,7 +24,7 @@ review_bp = Blueprint(
 
 @review_bp.post("")
 def create_review_api():
-    # Temporary user
+    # Temporary
     user_id = 1
 
     data = ReviewCreate.model_validate(
@@ -32,7 +32,7 @@ def create_review_api():
     )
 
     review = create_review(
-        user_id=user_id,
+        user_id=data.user_id,
         content_id=data.content_id,
         rating=data.rating,
         comment=data.comment

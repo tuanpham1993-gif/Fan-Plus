@@ -236,13 +236,12 @@ def update(content_id):
         }), 404
 
     response = ContentResponse.model_validate(content)
-
     return jsonify(response.model_dump()), 200
 
 @content_bp.delete("/<int:content_id>")
 def delete(content_id):
-    content = delete_content(content_id)
+    content = get_content(content_id)
     if content is None:
         return jsonify({"message": "Content not found"}), 404
-
+    content = delete_content(content_id)
     return jsonify({"message": "Content deleted successfully"}), 200

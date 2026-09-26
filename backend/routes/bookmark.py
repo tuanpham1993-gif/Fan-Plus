@@ -21,10 +21,9 @@ bookmark_bp = Blueprint(
 # POST /bookmarks
 @bookmark_bp.post("")
 def create_bookmark_api():
-
     # Temporary:
     # replace this with authenticated user later
-    user_id = 1
+    user_id = 2
 
     data = BookmarkCreate.model_validate(
         request.get_json()
