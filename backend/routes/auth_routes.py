@@ -79,6 +79,7 @@ def forgot_password():
 
     email = data.get('email', '').strip().lower()
     user = auth_crud.get_user_by_email(email)
+    #print(user)
     if not user:
         return jsonify({'message': 'Nếu Email tồn tại trong hệ thống, liên kết khôi phục đã được tạo'}), 200
 

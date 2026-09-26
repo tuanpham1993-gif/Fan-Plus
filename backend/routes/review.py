@@ -26,7 +26,7 @@ review_bp = Blueprint(
 @review_bp.post("")
 @token_required
 def create_review_api():
-    user_id = g.current_user_id
+    user_id = g.current_user.id
 
     data = ReviewCreate.model_validate(
         request.get_json()
@@ -84,7 +84,7 @@ def get_reviews_by_content_api(content_id):
 @review_bp.patch("/<int:review_id>")
 @token_required
 def update_review_api(review_id):
-    user_id = g.current_user_id
+    user_id = g.current_user.id
     review = get_review(review_id=review_id)
 
     if review is None:

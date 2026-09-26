@@ -70,13 +70,6 @@ def get_characters_api():
         }
     }), 200
 
-
-# ============================================================
-# GET CHARACTER DETAIL
-# GET /characters/<character_id>
-# Visitor + User + Admin
-# ============================================================
-
 @character_bp.get("/<int:character_id>")
 def get_character_api(character_id):
 
@@ -97,20 +90,9 @@ def get_character_api(character_id):
     }), 200
 
 
-# ============================================================
-# CREATE CHARACTER
-# POST /characters
-# multipart/form-data
-# User + Admin
-# ============================================================
-
 @character_bp.post("")
 @token_required
 def create_character_api():
-
-    # --------------------------------
-    # Lấy dữ liệu từ form
-    # --------------------------------
 
     data = request.form.to_dict()
 
@@ -120,10 +102,6 @@ def create_character_api():
     )
 
     data["category_id"] = category_id
-
-    # --------------------------------
-    # Lấy file ảnh
-    # --------------------------------
 
     image = request.files.get("image")
 

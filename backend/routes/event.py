@@ -89,7 +89,7 @@ def create_event_api():
             )
         }), 400
     
-    user_id = g.current_user_id
+    user_id = g.current_user.id
     content = create_content(
         author_id=user_id, category_id=category_id,
         title=title,body=body,

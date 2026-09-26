@@ -40,7 +40,6 @@ def get_user_dashboard(user_id):
     return {
         'greeting': f"Hello, {user.name}! Welcome back to Fan Hub.",
         'user': user.to_dict(),
-        'favorite_fandoms': user.to_dict()['favorite_fandoms'],
         'bookmarked_items': bookmarked_items,
         'recent_activity': recent_activity
     }

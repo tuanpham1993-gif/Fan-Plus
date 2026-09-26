@@ -3,6 +3,7 @@ from crud.mediaContent import get_medias, create_media
 from schema.mediaContent import ContentMediaResponse
 from services.media import save_file
 from crud.charactercontent import get_characters_by_content
+from crud.contentreaction import create_or_update_reaction
 from middleware.auth_middleware import admin_required, token_required
 from flask import Blueprint, request, jsonify, g
 from crud.content import (
@@ -13,12 +14,7 @@ from crud.content import (
     delete_content
 )
 
-from crud.contentreaction import (
-    create_reaction
-)
-
 from schema.content import (
-    ContentCreate,
     ContentUpdate,
     ContentResponse
 )
@@ -83,7 +79,7 @@ def create():
     title = request.form.get("title")
     body = request.form.get("body")
     content_type = request.form.get("content_type")
-    user_id = g.current_user_id
+    user_id = g.current_user.id
     content = create_content(
         author_id=user_id,
         category_id=category_id,
@@ -129,7 +125,7 @@ def create():
 @content_bp.post("/<int:content_id>/reactions")
 @token_required
 def react_to_content(content_id):
-    user_id = g.current_user_id
+    user_id = g.current_user.id
 
     content = get_content(content_id)
 
@@ -140,21 +136,21 @@ def react_to_content(content_id):
 
     reaction_type = request.json.get("reaction_type")
 
-    reaction = create_reaction(
+    reaction = create_or_update_reaction(
         user_id=user_id,
         content_id=content_id,
         reaction_type=reaction_type
     )
 
     return jsonify({
-        "message": "Reaction created successfully",
+        "message": "Reaction saved successfully",
         "reaction": {
             "id": reaction.id,
             "user_id": reaction.user_id,
             "content_id": reaction.content_id,
             "reaction_type": reaction.reaction_type
         }
-    }), 201
+    }), 200
 
 @content_bp.get("")
 def get_list():
