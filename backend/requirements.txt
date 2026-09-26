@@ -3,4 +3,6 @@ Flask-SQLAlchemy
 Flask-Migrate       
 psycopg               
 python-dotenv          
-pytest                  
+pytest
+pydantic>=2.0
+PyMySQL

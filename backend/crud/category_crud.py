@@ -1,53 +1,199 @@
+
 from extensions import db
+
 from models.category import Category
-from models.character_profile import CharacterProfile
+from models.character_profile import Character
 from models.merchandise_item import MerchandiseItem
 
+
+# =========================================================
+# GET ALL CATEGORIES
+# =========================================================
+
 def get_all_categories():
-    return Category.query.all()
 
-def get_category_by_id(category_id):
-    return Category.query.get(category_id)
+    return Category.query.order_by(
+        Category.name.asc()
+    ).all()
 
-def create_category(name, description=None):
-    existing = Category.query.filter(Category.name.ilike(name.strip())).first()
-    if existing:
+
+# =========================================================
+# GET ONE CATEGORY
+# =========================================================
+
+def get_category(category_id):
+
+    return db.session.get(
+        Category,
+        category_id
+    )
+
+
+# =========================================================
+# CREATE CATEGORY
+# =========================================================
+
+def create_category(
+    name,
+    description=None
+):
+
+    # --------------------------------
+    # Validate name
+    # --------------------------------
+
+    name = str(name or "").strip()
+
+    if not name:
+
+        return None, "Category name is required.", 400
+
+    # --------------------------------
+    # Check duplicate name
+    # --------------------------------
+
+    existing = Category.query.filter(
+        Category.name.ilike(name)
+    ).first()
+
+    if existing is not None:
+
         return None, "Category name already exists.", 409
-    
-    category = Category(name=name.strip(), description=description)
+
+    # --------------------------------
+    # Create category
+    # --------------------------------
+
+    category = Category(
+        name=name,
+        description=description
+    )
+
     db.session.add(category)
     db.session.commit()
-    return category, None, 201 
+    db.session.refresh(category)
 
-def update_category(category_id, data):
-    category = Category.query.get(category_id)
-    if not category:
+    return category, None, 201
+
+
+# =========================================================
+# UPDATE CATEGORY
+# =========================================================
+
+def update_category(
+    category_id,
+    data
+):
+
+    # --------------------------------
+    # Get category
+    # --------------------------------
+
+    category = db.session.get(
+        Category,
+        category_id
+    )
+
+    if category is None:
+
         return None, "Category not found.", 404
-    
-    if "name" in data and data["name"]:
-        name_str = str(data["name"]).strip()
-        existing = Category.query.filter(Category.name.ilike(name_str), Category.category_id != category_id).first()
-        if existing:
+
+    # --------------------------------
+    # Update name
+    # --------------------------------
+
+    if "name" in data:
+
+        name = str(
+            data["name"] or ""
+        ).strip()
+
+        if not name:
+
+            return None, "Category name cannot be empty.", 400
+
+        # Check duplicate name
+        duplicate = Category.query.filter(
+            Category.name.ilike(name),
+            Category.category_id != category_id
+        ).first()
+
+        if duplicate is not None:
+
             return None, "Category name already exists.", 409
-        category.name = name_str
-        
+
+        category.name = name
+
+    # --------------------------------
+    # Update description
+    # --------------------------------
+
     if "description" in data:
+
         category.description = data["description"]
-        
+
+    # --------------------------------
+    # Save changes
+    # --------------------------------
+
     db.session.commit()
+    db.session.refresh(category)
+
     return category, None, 200
 
+
+# =========================================================
+# DELETE CATEGORY
+# =========================================================
+
 def delete_category(category_id):
-    category = Category.query.get(category_id)
-    if not category:
-        return False, "Category not found.", 404
-    
-    has_character = CharacterProfile.query.filter_by(category_id=category_id).first()
-    has_merchandise = MerchandiseItem.query.filter_by(category_id=category_id).first()
-    
+
+    # --------------------------------
+    # Get category
+    # --------------------------------
+
+    category = db.session.get(
+        Category,
+        category_id
+    )
+
+    if category is None:
+
+        return None, "Category not found.", 404
+
+    # --------------------------------
+    # Check characters
+    # --------------------------------
+
+    has_character = Character.query.filter_by(
+        category_id=category_id
+    ).first()
+
+    # --------------------------------
+    # Check merchandise
+    # --------------------------------
+
+    has_merchandise = MerchandiseItem.query.filter_by(
+        category_id=category_id
+    ).first()
+
+    # --------------------------------
+    # Cannot delete if category is in use
+    # --------------------------------
+
     if has_character or has_merchandise:
-        return False, "Cannot delete category that is currently assigned to characters or merchandise.", 409
-        
+
+        return (
+            None,
+            "Cannot delete category that is currently assigned to characters or merchandise.",
+            409
+        )
+
+    # --------------------------------
+    # Delete category
+    # --------------------------------
+
     db.session.delete(category)
     db.session.commit()
-    return True, None, 200
+
+    return category, None, 200

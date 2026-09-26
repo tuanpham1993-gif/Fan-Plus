@@ -1,7 +1,20 @@
-def validate_category_data(data, is_update=False):
-    errors = []
-    if not is_update or "name" in data:
-        name = data.get("name")
-        if not name or not str(name).strip():
-            errors.append("Name is required and cannot be empty.")
-    return errors
+from pydantic import BaseModel, ConfigDict
+from typing import Optional
+
+
+class CategoryCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+
+class CategoryUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+
+
+class CategoryResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    category_id: int
+    name: str
+    description: Optional[str] = None
