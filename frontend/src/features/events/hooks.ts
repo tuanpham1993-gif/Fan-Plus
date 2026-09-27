@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useApp } from "../../lib/store";
 import { serverMode } from "../../shared/http/client";
 import { useAuth } from "../auth/AuthProvider";
-import type { EventItem } from "./api";
+import { eventApi, type EventItem } from "./api";
 import { eventsDataSource } from "./dataSource";
 import { optimisticJoinEvent, restoreEvent } from "./state";
 
@@ -53,7 +53,10 @@ export function useEvents() {
   const join = useCallback(
     async (eventId: string) => {
       if (!user) {
-        return { ok: false as const, error: "Please sign in to join this event." };
+        return {
+          ok: false as const,
+          error: "Please sign in to join this event.",
+        };
       }
       if (pendingIds.has(eventId)) return { ok: false as const, error: "" };
 

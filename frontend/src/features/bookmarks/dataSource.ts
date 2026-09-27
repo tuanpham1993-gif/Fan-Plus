@@ -1,10 +1,7 @@
 import type { Content, Database, User } from "../../domain/types";
 import { repository } from "../../services/repository";
 import { ApiError, serverMode } from "../../shared/http/client";
-import {
-  bookmarkApi,
-  type ContentBookmarkItem,
-} from "./api";
+import { bookmarkApi, type ContentBookmarkItem } from "./api";
 
 const COMMUNITY_DEMO_KEY = "fanhub.community.bookmarks.v1";
 
@@ -71,9 +68,7 @@ function requireDb(db: Database | null): Database {
 
 function readCommunityDemoStore(): DemoCommunityBookmarkStore {
   try {
-    const parsed = JSON.parse(
-      localStorage.getItem(COMMUNITY_DEMO_KEY) || "{}",
-    );
+    const parsed = JSON.parse(localStorage.getItem(COMMUNITY_DEMO_KEY) || "{}");
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
       return {};
     }
@@ -147,28 +142,31 @@ const apiCommunityDataSource: CommunityBookmarkDataSource = {
 function demoContentItems(db: Database, user: User): ContentBookmarkItem[] {
   return db.bookmarks
     .filter((bookmark) => bookmark.userId === user.id)
-    .map((bookmark) => {
+    .flatMap((bookmark) => {
       const content = db.contents.find(
         (candidate) =>
           candidate.id === bookmark.contentId &&
           candidate.status === "published",
       );
-      if (!content) return null;
-      return {
-        bookmark: {
-          id: bookmark.id,
-          contentId: bookmark.contentId,
-          note: bookmark.note,
-          createdAt: bookmark.createdAt,
-        },
-        content,
-      } satisfies ContentBookmarkItem;
+      if (!content) return [];
+      return [
+        {
+          bookmark: {
+            id: bookmark.id,
+            contentId: bookmark.contentId,
+            note: bookmark.note ?? "",
+            createdAt: bookmark.createdAt,
+            content_id: bookmark.contentId,
+            created_at: bookmark.createdAt,
+          },
+          content,
+        } satisfies ContentBookmarkItem,
+      ];
     })
-    .filter((item): item is ContentBookmarkItem => item !== null)
     .sort(
       (a, b) =>
-        new Date(b.bookmark.createdAt).getTime() -
-        new Date(a.bookmark.createdAt).getTime(),
+        new Date(b.bookmark.createdAt ?? 0).getTime() -
+        new Date(a.bookmark.createdAt ?? 0).getTime(),
     );
 }
 
@@ -244,7 +242,10 @@ const demoContentDataSource: ContentBookmarkDataSource = {
 
 const apiContentDataSource: ContentBookmarkDataSource = {
   async list(_db, _user, signal) {
-    return bookmarkApi.listContents(signal);
+    const snapshot = await bookmarkApi.listContents(signal);
+    return {
+      items: Array.isArray(snapshot?.items) ? snapshot.items : [],
+    };
   },
 
   async set(_db, _user, content, bookmarked) {

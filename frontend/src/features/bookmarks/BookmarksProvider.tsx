@@ -12,10 +12,7 @@ import { ApiError, serverMode } from "../../shared/http/client";
 import { useAuth } from "../auth/AuthProvider";
 import type { ContentBookmarkItem } from "./api";
 import { contentBookmarkDataSource } from "./dataSource";
-import {
-  restoreBookmarkItem,
-  setOptimisticBookmark,
-} from "./state";
+import { restoreBookmarkItem, setOptimisticBookmark } from "./state";
 
 type BookmarkStatus = "idle" | "loading" | "success" | "error";
 
@@ -69,7 +66,7 @@ export function BookmarksProvider({ children }: { children: React.ReactNode }) {
     setError("");
     try {
       const snapshot = await contentBookmarkDataSource.list(db, user);
-      setItems(snapshot.items);
+      setItems(Array.isArray(snapshot?.items) ? snapshot.items : []);
       setBackendSupported(true);
       setStatus("success");
     } catch (cause) {
@@ -107,7 +104,7 @@ export function BookmarksProvider({ children }: { children: React.ReactNode }) {
       .list(db, user, controller.signal)
       .then((snapshot) => {
         if (!active || controller.signal.aborted) return;
-        setItems(snapshot.items);
+        setItems(Array.isArray(snapshot?.items) ? snapshot.items : []);
         setBackendSupported(true);
         setStatus("success");
       })
@@ -201,7 +198,8 @@ export function BookmarksProvider({ children }: { children: React.ReactNode }) {
           return next;
         });
       }
-    }, [db, items, pendingIds, setDb, user?.id],
+    },
+    [db, items, pendingIds, setDb, user?.id],
   );
 
   const saveNote = useCallback(
@@ -217,7 +215,10 @@ export function BookmarksProvider({ children }: { children: React.ReactNode }) {
           item.bookmark.id === bookmarkId
             ? {
                 ...item,
-                bookmark: { ...item.bookmark, note: note.trim().slice(0, 1000) },
+                bookmark: {
+                  ...item.bookmark,
+                  note: note.trim().slice(0, 1000),
+                },
               }
             : item,
         ),
@@ -252,7 +253,8 @@ export function BookmarksProvider({ children }: { children: React.ReactNode }) {
           return next;
         });
       }
-    }, [db, items, pendingNoteIds, setDb, user?.id],
+    },
+    [db, items, pendingNoteIds, setDb, user?.id],
   );
 
   const value = useMemo<BookmarksContextValue>(

@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import { useAuth } from "./features/auth/AuthProvider";
 import { useApp } from "./lib/store";
-import { useLocation } from "./lib/router";
+import { navigate, useLocation } from "./lib/router";
 import Layout from "./components/Layout";
 import { Gate, Skeleton, Empty, Button } from "./components/ui";
 const Community = React.lazy(() => import("./features/Community"));
@@ -55,9 +55,39 @@ export class ErrorBoundary extends React.Component<
   }
 }
 export default function App() {
-  const { pathname } = useLocation();
+  const { pathname, params } = useLocation();
   const { loading, error, reload } = useApp();
-  const { user } = useAuth();
+  const { status, user } = useAuth();
+
+  useEffect(() => {
+    const protectedRoutes = new Set([
+      "/dashboard",
+      "/collection",
+      "/profile",
+      "/submit",
+      "/feedback",
+      "/admin",
+    ]);
+    const isPublicAuthRoute = [
+      "/login",
+      "/register",
+      "/forgot-password",
+      "/reset-password",
+      "/verify-email",
+    ].includes(pathname);
+
+    if (
+      status !== "loading" &&
+      !user &&
+      protectedRoutes.has(pathname) &&
+      !isPublicAuthRoute
+    ) {
+      navigate(
+        `/login?next=${encodeURIComponent(pathname + (params.toString() ? `?${params.toString()}` : ""))}`,
+      );
+    }
+  }, [status, user, pathname, params]);
+
   useEffect(() => {
     const names: Record<string, string> = {
       "/": "Discover",
@@ -92,26 +122,41 @@ export default function App() {
       </Empty>
     );
   else if (pathname === "/") page = <Home />;
-  else if (
-    ["/explore", "/media", "/showcase"].includes(pathname)
-  )
+  else if (["/explore", "/media", "/showcase"].includes(pathname))
     page = <Explore key={pathname} mode={pathname.slice(1)} />;
   else if (pathname === "/categories") page = <Categories />;
   else if (pathname === "/characters") page = <Characters />;
-  else if (pathname.startsWith("/characters/") && pathname.split("/").length === 3) {
-    const id = Number(decodeURIComponent(pathname.slice("/characters/".length)));
-    page = Number.isInteger(id) && id > 0
-      ? <ResourceDetail key={pathname} kind="character" id={id} />
-      : <Utility mode="404" />;
-  }
-  else if (pathname === "/merchandise") page = <Merchandise />;
-  else if (pathname.startsWith("/merchandise/") && pathname.split("/").length === 3) {
-    const id = Number(decodeURIComponent(pathname.slice("/merchandise/".length)));
-    page = Number.isInteger(id) && id > 0
-      ? <ResourceDetail key={pathname} kind="merchandise" id={id} />
-      : <Utility mode="404" />;
-  }
-  else if (pathname.startsWith("/content/") && pathname.split("/").length === 3)
+  else if (
+    pathname.startsWith("/characters/") &&
+    pathname.split("/").length === 3
+  ) {
+    const id = Number(
+      decodeURIComponent(pathname.slice("/characters/".length)),
+    );
+    page =
+      Number.isInteger(id) && id > 0 ? (
+        <ResourceDetail key={pathname} kind="character" id={id} />
+      ) : (
+        <Utility mode="404" />
+      );
+  } else if (pathname === "/merchandise") page = <Merchandise />;
+  else if (
+    pathname.startsWith("/merchandise/") &&
+    pathname.split("/").length === 3
+  ) {
+    const id = Number(
+      decodeURIComponent(pathname.slice("/merchandise/".length)),
+    );
+    page =
+      Number.isInteger(id) && id > 0 ? (
+        <ResourceDetail key={pathname} kind="merchandise" id={id} />
+      ) : (
+        <Utility mode="404" />
+      );
+  } else if (
+    pathname.startsWith("/content/") &&
+    pathname.split("/").length === 3
+  )
     page = <Detail key={pathname} id={decodeURIComponent(pathname.slice(9))} />;
   else if (pathname === "/events") page = <Events />;
   else if (pathname.startsWith("/events/") && pathname.split("/").length === 3)

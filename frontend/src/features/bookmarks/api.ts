@@ -7,9 +7,12 @@ export interface CommunityBookmarksResponse {
 
 export interface ContentBookmarkRecord {
   id: string;
-  contentId: string;
-  note: string;
-  createdAt: string;
+  user_id?: number;
+  content_id?: string | number;
+  contentId?: string;
+  note?: string;
+  created_at?: string;
+  createdAt?: string;
 }
 
 export interface ContentBookmarkItem {
@@ -38,8 +41,15 @@ export const bookmarkApi = {
       { bookmarked },
     ),
 
-  listContents: (signal?: AbortSignal) =>
-    apiClient.get<ContentBookmarksResponse>("/bookmarks", { signal }),
+  listContents: async (signal?: AbortSignal) => {
+    const raw = await apiClient.get<any>("/bookmarks", { signal });
+    const items = Array.isArray(raw)
+      ? raw
+      : Array.isArray(raw?.items)
+        ? raw.items
+        : [];
+    return { items } as ContentBookmarksResponse;
+  },
 
   setContent: (contentId: string, bookmarked: boolean) =>
     apiClient.put<SetContentBookmarkResponse>(
