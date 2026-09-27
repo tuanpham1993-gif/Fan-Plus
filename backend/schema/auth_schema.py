@@ -31,15 +31,15 @@ def validate_login_data(data):
     data = data or {}
     email = data.get('email', '').strip().lower()
     password = data.get('password', '')
-    captcha_token = data.get('captcha_token', '').strip()
+    # captcha_token = data.get('captcha_token', '').strip()
 
     if not email or not password:
         return False, 'Vui lòng nhập Email và Mật khẩu'
 
-    if captcha_token:
-        is_captcha_valid, captcha_err = verify_recaptcha(captcha_token)
-        if not is_captcha_valid:
-            return False, captcha_err
+    # if captcha_token:
+    #     is_captcha_valid, captcha_err = verify_recaptcha(captcha_token)
+    #     if not is_captcha_valid:
+    #         return False, captcha_err
 
     return True, None
 
