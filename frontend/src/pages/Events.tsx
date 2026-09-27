@@ -37,7 +37,30 @@ export default function Events({ id }: { id?: string }) {
     reload,
     join,
     isPending,
+    getEventById,
   } = useEvents();
+  const [singleEvent, setSingleEvent] = React.useState<any>(null);
+  const [singleLoading, setSingleLoading] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!id) return;
+    const found = sourceEvents.find((e) => e.id === id);
+    if (found) {
+      setSingleEvent(found);
+      return;
+    }
+    let active = true;
+    setSingleLoading(true);
+    getEventById(id).then((res) => {
+      if (active) {
+        setSingleEvent(res);
+        setSingleLoading(false);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [id, sourceEvents, getEventById]);
   const [view, setView] = useState("list"),
     [geo, setGeo] = useState<{
       lat: number;
@@ -144,7 +167,15 @@ export default function Events({ id }: { id?: string }) {
   }
 
   if (id) {
-    const event = sourceEvents.find((candidate) => candidate.id === id);
+    if (singleLoading) {
+      return (
+        <>
+          <Crumbs items={[{ label: "Events", to: "/events" }, { label: "Loading..." }]} />
+          <Skeleton cards={1} />
+        </>
+      );
+    }
+    const event = singleEvent || sourceEvents.find((candidate) => candidate.id === id);
     if (!event)
       return (
         <Empty

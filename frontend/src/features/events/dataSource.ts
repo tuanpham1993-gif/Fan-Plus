@@ -93,11 +93,12 @@ const demoEventsDataSource: EventsDataSource = {
 
 const apiEventsDataSource: EventsDataSource = {
   async list(_db, _user, signal) {
-    return eventApi.list(signal);
+    return eventApi.list(undefined, signal);
   },
 
   async join(_db, _user, eventId) {
-    return (await eventApi.join(eventId)).event;
+    const res = await eventApi.join(eventId);
+    return res.event;
   },
 };
 
