@@ -65,7 +65,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       navigate("/");
     } catch (error) {
       notify(
-        error instanceof Error ? error.message : "Sign out failed. Please retry.",
+        error instanceof Error
+          ? error.message
+          : "Sign out failed. Please retry.",
         "error",
       );
     }
@@ -99,15 +101,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           About this demo <Icon name="arrow" size={12} />
         </Link>
       </div>
-      {serverMode && user && user.verified === false && (
+      {serverMode && user && user.status === "pending" && (
         <div className="demo-strip verify-strip">
           <span>
             <Icon name="info" size={14} />
-            Verify your email to post, comment or enter giveaways.
+            This account needs a backend verification flow before posting.
           </span>
-          <Link to={"/verify-email?email=" + encodeURIComponent(user.email)}>
-            Verify now <Icon name="arrow" size={12} />
-          </Link>
         </div>
       )}
       <header className="site-header">
@@ -186,9 +185,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   {user.role === "admin" && (
                     <Link to="/admin">Catalog admin (V1 demo)</Link>
                   )}
-                  <button onClick={() => void signOut()}>
-                    Sign out
-                  </button>
+                  <button onClick={() => void signOut()}>Sign out</button>
                 </div>
               </details>
             ) : (

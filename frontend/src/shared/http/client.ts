@@ -1,3 +1,6 @@
+
+// Shared HTTP boundary for Flask-backed frontend feature.
+
 declare global {
   interface Window {
     FANHUB_RUNTIME?: { api: boolean };
@@ -179,8 +182,10 @@ export async function api<T>(
       if (refreshRes.ok) {
         const refreshData: any = await readJson(refreshRes);
         const newAccessToken = refreshData?.access_token;
+        // ROTATION FIX: backend revokes old refresh_token on /refresh. Must save new one.
+        const newRefreshToken = refreshData?.refresh_token;
         if (newAccessToken) {
-          setTokens(newAccessToken);
+          setTokens(newAccessToken, newRefreshToken ?? undefined);
           headers.set("Authorization", `Bearer ${newAccessToken}`);
           response = await fetchWithTimeout(
             apiUrl(path, apiPrefix),
@@ -264,3 +269,4 @@ export const json = (method: string, body: unknown): ApiRequestOptions => ({
   method,
   body: JSON.stringify(body),
 });
+

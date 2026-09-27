@@ -497,7 +497,9 @@ export default function Admin() {
       <>
         {pageHeader}
         <Notice kind="error">
-          <p>{admin.error || "The administrator workspace could not be loaded."}</p>
+          <p>
+            {admin.error || "The administrator workspace could not be loaded."}
+          </p>
           <Button variant="secondary" onClick={() => void admin.reload()}>
             Retry
           </Button>
@@ -539,7 +541,10 @@ export default function Admin() {
         "Category saved.",
       );
     if (kind === "event")
-      return runAction(() => admin.saveEvent(value as FanEvent), "Event saved.");
+      return runAction(
+        () => admin.saveEvent(value as FanEvent),
+        "Event saved.",
+      );
     return runAction(
       () => admin.saveKnowledge(value as FAQ),
       "Knowledge entry saved.",
@@ -620,9 +625,7 @@ export default function Admin() {
   return (
     <>
       {pageHeader}
-      {admin.error && (
-        <Notice kind="error">{admin.error}</Notice>
-      )}
+      {admin.error && <Notice kind="error">{admin.error}</Notice>}
       <div className="admin-layout">
         <nav className="admin-nav" aria-label="Admin sections">
           {sections.map(([id, icon, label]) => (
@@ -647,13 +650,18 @@ export default function Admin() {
                 <div className="stat-card">
                   <Icon name="book" />
                   <strong>
-                    {data.contents.filter((c) => c.status === "published").length}
+                    {
+                      data.contents.filter((c) => c.status === "published")
+                        .length
+                    }
                   </strong>
                   <span>Published discoveries</span>
                 </div>
                 <div className="stat-card">
                   <Icon name="users" />
-                  <strong>{data.users.filter((u) => !u.suspended).length}</strong>
+                  <strong>
+                    {data.users.filter((u) => u.status !== "suspended").length}
+                  </strong>
                   <span>Enabled accounts</span>
                 </div>
                 <div className="stat-card">
@@ -672,8 +680,8 @@ export default function Admin() {
               <section className="panel">
                 <h2>Content mix</h2>
                 <p className="muted">
-                  Calculated from the current administrator content library. These bars show
-                  inventory, not live user popularity.
+                  Calculated from the current administrator content library.
+                  These bars show inventory, not live user popularity.
                 </p>
                 <div className="analytics-bars">
                   {data.categories.map((cat) => {
@@ -727,8 +735,9 @@ export default function Admin() {
                 <section className="panel">
                   <h2>Instrumentation boundary</h2>
                   <p className="muted">
-                    Active-user windows, aggregated view counts and chatbot volume are outside
-                    the current admin workspace contract and remain backend gaps.
+                    Active-user windows, aggregated view counts and chatbot
+                    volume are outside the current admin workspace contract and
+                    remain backend gaps.
                   </p>
                 </section>
               </div>
@@ -941,8 +950,8 @@ export default function Admin() {
                           </div>
                           <h3>{s.title}</h3>
                           <p className="muted">
-                            By {data.users.find((u) => u.id === s.userId)?.name} /{" "}
-                            {s.fandom}
+                            By {data.users.find((u) => u.id === s.userId)?.name}{" "}
+                            / {s.fandom}
                           </p>
                           <p className="clamp-3">{s.body}</p>
                           {s.status === "pending" ? (
@@ -996,10 +1005,14 @@ export default function Admin() {
                               <span
                                 className={
                                   "status status-" +
-                                  (u.suspended ? "rejected" : "published")
+                                  (u.status === "suspended"
+                                    ? "rejected"
+                                    : "published")
                                 }
                               >
-                                {u.suspended ? "Suspended" : "Enabled"}
+                                {u.status === "suspended"
+                                  ? "Suspended"
+                                  : "Enabled"}
                               </span>
                             </td>
                             <td>
@@ -1008,21 +1021,24 @@ export default function Admin() {
                                 disabled={u.id === user.id}
                                 onClick={() =>
                                   remove(
-                                    (u.suspended ? "Enable " : "Suspend ") +
-                                      u.name,
+                                    (u.status === "suspended"
+                                      ? "Enable "
+                                      : "Suspend ") + u.name,
                                     () =>
                                       runAction(
                                         () =>
                                           admin.setUserStatus(
                                             u.id,
-                                            !u.suspended,
+                                            u.status !== "suspended",
                                           ),
                                         "Account status updated.",
                                       ),
                                   )
                                 }
                               >
-                                {u.suspended ? "Enable" : "Suspend"}
+                                {u.status === "suspended"
+                                  ? "Enable"
+                                  : "Suspend"}
                               </Button>
                             </td>
                           </tr>

@@ -117,9 +117,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [notify],
   );
 
+
   const localUser = authUser && db
     ? db.users.find((candidate) => candidate.id === authUser.id) || null
     : null;
+
   const user: User | null = authUser
     ? localUser
       ? {
@@ -127,10 +129,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           id: authUser.id,
           email: authUser.email,
           role: authUser.role,
-          suspended: authUser.suspended,
-          verified: authUser.verified,
+          avatar: authUser.avatar ?? localUser.avatar ?? null,
+          status: authUser.status,
+          favorite_fandoms: authUser.favorite_fandoms,
+          display_preferences: {
+            ...localUser.display_preferences,
+            ...authUser.display_preferences,
+          },
+          created_at: authUser.created_at,
+          updated_at: authUser.updated_at,
         }
-      : authUser
+      : {
+          ...authUser,
+          avatar: authUser.avatar ?? null,
+        }
     : null;
 
   return (

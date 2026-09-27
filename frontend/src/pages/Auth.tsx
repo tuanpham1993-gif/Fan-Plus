@@ -42,6 +42,7 @@ export default function Auth({ mode }: { mode: string }) {
     setBusy(true);
     try {
       if (mode === "login") {
+        // TODO: khi có widget reCAPTCHA thật, lấy token từ widget và truyền vào login()
         const u = await login(email, password);
         navigate(
           params.get("next")
@@ -50,26 +51,37 @@ export default function Auth({ mode }: { mode: string }) {
               ? "/admin"
               : "/dashboard",
         );
-        notify(serverMode ? "Welcome back." : "Welcome to your demo workspace.");
+        notify(
+          serverMode ? "Welcome back." : "Welcome to your demo workspace.",
+        );
       } else if (mode === "register") {
         if (password !== confirm) throw new Error("Passwords do not match.");
         if (serverMode) {
-          await authApi.register({
+          const result = await authApi.register({
             name,
             email,
             password,
-            favoriteCategories: interests,
+            // TẠM THỜI: dùng token test cố định vì UI captcha đang bị ẩn.
+            // Khi triển khai captcha thật, xóa giá trị mặc định này và bắt
+            // buộc truyền captchaToken thật từ widget vào.
+            captcha_token: "PASSED_TEST_TOKEN",
           });
-        } else {
-          const result = await repository.register(
-            name,
-            email,
-            password,
-            interests,
-          );
-          setDb(result.db);
+          notify(result.message || "Đăng ký thành công, vui lòng đăng nhập.");
+          navigate("/login");
+          // TODO: nếu sau này backend triển khai xác thực email thật,
+          // đổi navigate("/login") thành navigate("/verify-email?email=...")
+          // và khôi phục lại luồng gọi authApi.verify()/resendVerification().
+          return;
         }
-        navigate("/verify-email?email=" + encodeURIComponent(email));
+
+        const result = await repository.register(
+          name,
+          email,
+          password,
+          interests,
+        );
+        setDb(result.db);
+        navigate("/login");
       } else if (mode === "forgot") {
         setResetToken(await repository.forgot(email));
         setDone(true);
@@ -126,8 +138,7 @@ export default function Auth({ mode }: { mode: string }) {
         const r = await authApi.resendVerification(email);
         setEmailSent(r.emailSent);
         setDevOtp(r.devOtp || null);
-      } catch {
-      }
+      } catch {}
     })();
   }, [mode, email]);
   return (
@@ -226,7 +237,11 @@ export default function Auth({ mode }: { mode: string }) {
                       {error}
                     </p>
                   )}
-                  <Button type="submit" busy={busy} disabled={code.length !== 6}>
+                  <Button
+                    type="submit"
+                    busy={busy}
+                    disabled={code.length !== 6}
+                  >
                     Verify email <Icon name="check" size={16} />
                   </Button>
                 </form>

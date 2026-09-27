@@ -26,14 +26,16 @@ function requireDb(db: Database | null): Database {
 
 function requireUser(user: User | null): User {
   if (!user) throw new Error("Please sign in to join this event.");
-  if (user.suspended) throw new Error("This account cannot join events.");
+  if (user.status === "suspended")
+    throw new Error("This account cannot join events.");
   return user;
 }
 
 function readDemoJoins(): DemoJoinStore {
   try {
     const parsed = JSON.parse(localStorage.getItem(DEMO_JOIN_KEY) || "{}");
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
+      return {};
 
     const result: DemoJoinStore = {};
     for (const [userId, value] of Object.entries(parsed)) {
@@ -53,7 +55,9 @@ function writeDemoJoins(store: DemoJoinStore) {
   try {
     localStorage.setItem(DEMO_JOIN_KEY, JSON.stringify(store));
   } catch {
-    throw new Error("Demo storage is unavailable. Your event join was not saved.");
+    throw new Error(
+      "Demo storage is unavailable. Your event join was not saved.",
+    );
   }
 }
 
@@ -76,7 +80,9 @@ const demoEventsDataSource: EventsDataSource = {
   async join(db, user, eventId) {
     const currentDb = requireDb(db);
     const active = requireUser(user);
-    const event = currentDb.events.find((candidate) => candidate.id === eventId);
+    const event = currentDb.events.find(
+      (candidate) => candidate.id === eventId,
+    );
     if (!event) throw new Error("Event not found.");
 
     const store = readDemoJoins();

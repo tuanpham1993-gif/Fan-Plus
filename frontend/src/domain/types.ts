@@ -1,13 +1,20 @@
-export type CategoryId = string;
+﻿export type CategoryId = string;
 export type ContentType =
-  "article" | "character" | "video" | "audio" | "gallery" | "merchandise";
-export type Role = "member" | "admin";
+  | "article"
+  | "character"
+  | "video"
+  | "audio"
+  | "gallery"
+  | "merchandise";
+export type Role = "user" | "admin";
 export interface Category {
   id: CategoryId;
   name: string;
   description: string;
   icon: string;
   color: string;
+  accentColor?: string;
+  contentCount?: number;
 }
 export interface Content {
   id: string;
@@ -73,13 +80,13 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  avatar: string | null;
   role: Role;
-  favoriteCategories: string[];
-  favoriteFandoms: string[];
-  bio: string;
-  suspended: boolean;
-  avatar?: string;
-  verified?: boolean;
+  status: string;
+  favorite_fandoms: string[];
+  display_preferences: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
 }
 export interface Bookmark {
   id: string;

@@ -31,7 +31,7 @@ export interface AdminDataSource {
 
 function assertDemoAdmin(db: Database) {
   const user = repository.currentSessionUser();
-  if (!user || user.role !== "admin" || user.suspended)
+  if (!user || user.role !== "admin" || user.status === "suspended")
     throw new AppError("This action requires an administrator.", 403);
 }
 
@@ -146,7 +146,9 @@ const demoDataSource: AdminDataSource = {
   },
 
   async moderateSubmission(id, decision, reason) {
-    return workspaceFromDatabase(await repository.moderate(id, decision, reason));
+    return workspaceFromDatabase(
+      await repository.moderate(id, decision, reason),
+    );
   },
 
   async setUserStatus(id, suspended) {

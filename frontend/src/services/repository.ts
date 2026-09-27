@@ -20,14 +20,44 @@ const DB_KEY = "fanhub.demo.db.v1",
   CREDENTIALS_KEY = "fanhub.demo.verifiers.v1";
 const sleep = (ms = 160) => new Promise((resolve) => setTimeout(resolve, ms));
 const DISPOSABLE_EMAIL_DOMAINS = new Set([
-  "mailinator.com", "10minutemail.com", "10minutemail.net", "guerrillamail.com",
-  "guerrillamail.info", "guerrillamail.biz", "guerrillamail.de", "sharklasers.com",
-  "yopmail.com", "yopmail.fr", "yopmail.net", "trashmail.com", "trash-mail.com",
-  "tempmail.com", "temp-mail.org", "tempmail.net", "tempinbox.com", "throwawaymail.com",
-  "getnada.com", "dispostable.com", "maildrop.cc", "mintemail.com", "mailnesia.com",
-  "fakeinbox.com", "spamgourmet.com", "discard.email", "moakt.com", "emailondeck.com",
-  "33mail.com", "mytemp.email", "mohmal.com", "mail-temporaire.fr", "einrot.com",
-  "jetable.org", "spam4.me", "mailcatch.com", "anonbox.net", "inboxbear.com",
+  "mailinator.com",
+  "10minutemail.com",
+  "10minutemail.net",
+  "guerrillamail.com",
+  "guerrillamail.info",
+  "guerrillamail.biz",
+  "guerrillamail.de",
+  "sharklasers.com",
+  "yopmail.com",
+  "yopmail.fr",
+  "yopmail.net",
+  "trashmail.com",
+  "trash-mail.com",
+  "tempmail.com",
+  "temp-mail.org",
+  "tempmail.net",
+  "tempinbox.com",
+  "throwawaymail.com",
+  "getnada.com",
+  "dispostable.com",
+  "maildrop.cc",
+  "mintemail.com",
+  "mailnesia.com",
+  "fakeinbox.com",
+  "spamgourmet.com",
+  "discard.email",
+  "moakt.com",
+  "emailondeck.com",
+  "33mail.com",
+  "mytemp.email",
+  "mohmal.com",
+  "mail-temporaire.fr",
+  "einrot.com",
+  "jetable.org",
+  "spam4.me",
+  "mailcatch.com",
+  "anonbox.net",
+  "inboxbear.com",
 ]);
 export class AppError extends Error {
   constructor(
@@ -97,7 +127,8 @@ function id(prefix: string) {
 }
 function actor(db: Database, admin = false): User {
   const u = db.users.find((x) => x.id === sessionStorage.getItem(SESSION_KEY));
-  if (!u || u.suspended) throw new AppError("Sign in to continue.", 401);
+  if (!u || u.status === "suspended")
+    throw new AppError("Sign in to continue.", 401);
   if (admin && u.role !== "admin")
     throw new AppError("This action requires an administrator.", 403);
   return u;
@@ -144,7 +175,9 @@ export const repository = {
   currentUser(db: Database): User | null {
     return (
       db.users.find(
-        (x) => x.id === sessionStorage.getItem(SESSION_KEY) && !x.suspended,
+        (x) =>
+          x.id === sessionStorage.getItem(SESSION_KEY) &&
+          x.status !== "suspended",
       ) || null
     );
   },
@@ -168,7 +201,7 @@ export const repository = {
       ? (await verifier(password, saved.salt)) === saved.hash
       : ["fan@fanhub.demo", "admin@fanhub.demo"].includes(key) &&
         password === DEMO_PASSWORD;
-    if (!u || !valid || u.suspended)
+    if (!u || !valid || u.status === "suspended")
       throw new AppError(
         "Email or password is incorrect, or this demo account is unavailable.",
         401,
@@ -213,11 +246,15 @@ export const repository = {
       id: id("u"),
       name: name.trim(),
       email: key,
-      role: "member",
-      favoriteCategories,
-      favoriteFandoms: [],
-      bio: "",
-      suspended: false,
+      avatar: null,
+      role: "user",
+      status: "active",
+      favorite_fandoms: [],
+      display_preferences: {
+        favoriteCategories,
+      },
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     });
     await setPassword(key, password);
     persist(db);
@@ -372,19 +409,20 @@ export const repository = {
     return db;
   },
   async updateProfile(
-    patch: Pick<
-      User,
-      "name" | "bio" | "favoriteCategories" | "favoriteFandoms" | "avatar"
+    patch: Partial<
+      Pick<User, "name" | "avatar" | "favorite_fandoms" | "display_preferences">
     >,
   ) {
     await sleep();
     const db = readDb(),
       u = actor(db);
-    if (!patch.name.trim() || patch.name.length > 60)
+    if (!patch.name || !patch.name.trim() || patch.name.length > 60)
       throw new AppError("Display name must contain 1-60 characters.");
-    const favoriteCategories = patch.favoriteCategories.filter((c) =>
-      db.categories.some((x) => x.id === c),
-    );
+    const favoriteFandoms = (patch.favorite_fandoms ?? []).filter(Boolean);
+    const nextDisplayPreferences = {
+      ...(u.display_preferences ?? {}),
+      ...(patch.display_preferences ?? {}),
+    };
     if (serverMode) {
       try {
         await api(
@@ -392,6 +430,8 @@ export const repository = {
           json("PUT", {
             name: patch.name.trim(),
             avatar: patch.avatar || null,
+            favorite_fandoms: favoriteFandoms,
+            display_preferences: nextDisplayPreferences,
           }),
         );
       } catch (e) {
@@ -400,8 +440,8 @@ export const repository = {
     }
     Object.assign(u, patch, {
       name: patch.name.trim(),
-      bio: patch.bio.slice(0, 500),
-      favoriteCategories,
+      favorite_fandoms: favoriteFandoms,
+      display_preferences: nextDisplayPreferences,
     });
     persist(db);
     return db;
@@ -564,12 +604,20 @@ export const repository = {
         "Category is in use. Reassign its content, events and submissions first.",
       );
     db.categories = db.categories.filter((c) => c.id !== categoryId);
-    db.users.forEach(
-      (u) =>
-        (u.favoriteCategories = u.favoriteCategories.filter(
-          (c) => c !== categoryId,
-        )),
-    );
+    db.users.forEach((u) => {
+      const displayPreferences = (u.display_preferences ?? {}) as {
+        favoriteCategories?: string[];
+      };
+      const favoriteCategories = Array.isArray(
+        displayPreferences.favoriteCategories,
+      )
+        ? displayPreferences.favoriteCategories
+        : [];
+      displayPreferences.favoriteCategories = favoriteCategories.filter(
+        (c) => c !== categoryId,
+      );
+      u.display_preferences = displayPreferences;
+    });
     persist(db);
     return db;
   },
@@ -617,7 +665,7 @@ export const repository = {
     if (u.id === userId)
       throw new AppError("You cannot suspend your own admin account.");
     const target = db.users.find((x) => x.id === userId);
-    if (target) target.suspended = suspended;
+    if (target) target.status = suspended ? "suspended" : "active";
     persist(db);
     return db;
   },

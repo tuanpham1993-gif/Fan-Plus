@@ -19,7 +19,11 @@ interface AuthContextValue {
   user: User | null;
   error: string | null;
   refresh: () => Promise<User | null>;
-  login: (email: string, password: string) => Promise<User>;
+  login: (
+    email: string,
+    password: string,
+    captchaToken?: string,
+  ) => Promise<User>;
   logout: () => Promise<void>;
   adoptUser: (user: User) => void;
 }
@@ -62,13 +66,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [applyUser]);
 
   const login = useCallback(
-    async (email: string, password: string) => {
+    async (
+      email: string,
+      password: string,
+      // TẠM THỜI: dùng token test cố định vì UI captcha đang bị ẩn.
+      // Khi triển khai captcha thật, xóa giá trị mặc định này và bắt
+      // buộc truyền captchaToken thật từ widget vào.
+      captchaToken = "PASSED_TEST_TOKEN",
+    ) => {
       setError(null);
       try {
         const next = serverMode
-          ? (await authApi.login(email, password)).user
+          ? (await authApi.login(email, password, captchaToken)).user
           : repository.currentUser(await repository.login(email, password));
-        if (!next) throw new Error("The authenticated user could not be loaded.");
+        if (!next)
+          throw new Error("The authenticated user could not be loaded.");
         applyUser(next);
         return next;
       } catch (cause) {

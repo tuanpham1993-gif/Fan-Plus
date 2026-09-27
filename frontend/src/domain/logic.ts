@@ -94,19 +94,33 @@ export function recommend(db: Database, user: User | null, limit = 4) {
   const saved = new Set(
     db.bookmarks.filter((b) => b.userId === user?.id).map((b) => b.contentId),
   );
+  const favoriteCategories = Array.isArray(
+    (
+      user as
+        | (User & { display_preferences?: { favoriteCategories?: string[] } })
+        | null
+    )?.display_preferences?.favoriteCategories,
+  )
+    ? (
+        user as User & {
+          display_preferences?: { favoriteCategories?: string[] };
+        }
+      ).display_preferences!.favoriteCategories!
+    : [];
+  const favoriteFandoms = user?.favorite_fandoms ?? [];
   return db.contents
     .filter((c) => c.status === "published" && !saved.has(c.id))
     .map((c) => ({
       content: c,
-      reason: user?.favoriteCategories.includes(c.categoryId)
+      reason: favoriteCategories.includes(c.categoryId)
         ? "Because you follow this category"
-        : user?.favoriteFandoms.includes(c.fandom)
+        : favoriteFandoms.includes(c.fandom)
           ? "From a fandom you follow"
           : "An editorial discovery",
       score:
         c.popularity +
-        (user?.favoriteCategories.includes(c.categoryId) ? 100 : 0) +
-        (user?.favoriteFandoms.includes(c.fandom) ? 150 : 0),
+        (favoriteCategories.includes(c.categoryId) ? 100 : 0) +
+        (favoriteFandoms.includes(c.fandom) ? 150 : 0),
     }))
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);

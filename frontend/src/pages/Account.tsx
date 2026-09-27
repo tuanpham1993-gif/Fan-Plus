@@ -44,7 +44,18 @@ function Dashboard() {
   const { db } = useApp();
   const { user } = useAuth();
   const { count: bookmarkCount } = useBookmarks();
-  const { picks, loading: catalogLoading, error: catalogError } = useHomeCatalog(user);
+  const favoriteCategories = Array.isArray(
+    (user?.display_preferences as { favoriteCategories?: string[] } | undefined)
+      ?.favoriteCategories,
+  )
+    ? ((user?.display_preferences as { favoriteCategories?: string[] })
+        .favoriteCategories as string[])
+    : [];
+  const {
+    picks,
+    loading: catalogLoading,
+    error: catalogError,
+  } = useHomeCatalog(user);
   if (!db || !user) return null;
   const activity = db.activity.filter((a) => a.userId === user.id).slice(0, 4),
     contributions = db.submissions.filter((s) => s.userId === user.id),
@@ -134,7 +145,8 @@ function Dashboard() {
           <Skeleton cards={4} />
         ) : catalogError ? (
           <Notice kind="error">
-            Personalized catalog recommendations are not available yet. {catalogError}
+            Personalized catalog recommendations are not available yet.{" "}
+            {catalogError}
           </Notice>
         ) : (
           <div className="card-grid home-cards">
@@ -179,8 +191,8 @@ function Dashboard() {
         <section className="panel">
           <h2>Your favorite worlds</h2>
           <div className="tag-list">
-            {user.favoriteCategories.length ? (
-              user.favoriteCategories.map((id) => (
+            {(favoriteCategories ?? []).length ? (
+              favoriteCategories.map((id) => (
                 <Link to={"/explore?category=" + id} className="tag" key={id}>
                   {categoryLabel(id)}
                 </Link>
@@ -203,13 +215,7 @@ function Dashboard() {
 function Collection() {
   const { notify } = useApp();
   const { user } = useAuth();
-  const {
-    status,
-    items,
-    error,
-    notesSupported,
-    saveNote,
-  } = useBookmarks();
+  const { status, items, error, notesSupported, saveNote } = useBookmarks();
   const [q, setQ] = useState("");
   const [note, setNote] = useState<ContentBookmarkItem | null>(null);
   const [text, setText] = useState("");
@@ -260,7 +266,7 @@ function Collection() {
                   type="button"
                   onClick={() => {
                     setNote(item);
-                    setText(item.bookmark.note);
+                    setText(item.bookmark.note ?? "");
                   }}
                 >
                   <Icon name="edit" size={15} />
@@ -358,27 +364,32 @@ function Profile() {
     count: bookmarkCount,
     error: bookmarkError,
   } = useBookmarks();
+  const favoriteCategories = Array.isArray(
+    (user?.display_preferences as { favoriteCategories?: string[] } | undefined)
+      ?.favoriteCategories,
+  )
+    ? ((user?.display_preferences as { favoriteCategories?: string[] })
+        .favoriteCategories as string[])
+    : [];
+  const favoriteFandoms = user?.favorite_fandoms ?? [];
   const [name, setName] = useState(user?.name || "");
-  const [bio, setBio] = useState(user?.bio || "");
-  const [cats, setCats] = useState(user?.favoriteCategories || []);
-  const [fandoms, setFandoms] = useState((user?.favoriteFandoms || []).join(", "));
+  const [cats, setCats] = useState(favoriteCategories);
+  const [fandoms, setFandoms] = useState(favoriteFandoms.join(", "));
   const [avatar, setAvatar] = useState(user?.avatar || "");
   const [reset, setReset] = useState(false);
 
   useEffect(() => {
     if (!user) return;
     setName(user.name);
-    setBio(user.bio || "");
-    setCats(user.favoriteCategories || []);
-    setFandoms((user.favoriteFandoms || []).join(", "));
+    setCats(favoriteCategories);
+    setFandoms(favoriteFandoms.join(", "));
     setAvatar(user.avatar || "");
   }, [
     user?.id,
     user?.name,
-    user?.bio,
     user?.avatar,
-    user?.favoriteCategories.join("|"),
-    user?.favoriteFandoms.join("|"),
+    user?.favorite_fandoms?.join("|"),
+    JSON.stringify(user?.display_preferences ?? {}),
   ]);
 
   const upload = async (file?: File) => {
@@ -420,7 +431,10 @@ function Profile() {
       await logout();
       navigate("/");
     } catch (cause) {
-      notify(cause instanceof Error ? cause.message : "Sign out failed.", "error");
+      notify(
+        cause instanceof Error ? cause.message : "Sign out failed.",
+        "error",
+      );
     }
   };
 
@@ -462,13 +476,14 @@ function Profile() {
             try {
               const result = await save({
                 name,
-                bio,
-                favoriteCategories: cats,
-                favoriteFandoms: fandoms
+                avatar,
+                favorite_fandoms: fandoms
                   .split(",")
                   .map((value) => value.trim())
                   .filter(Boolean),
-                avatar,
+                display_preferences: {
+                  favoriteCategories: cats,
+                },
               });
               if (result.unsupportedFields.length) {
                 notify(
@@ -495,16 +510,20 @@ function Profile() {
 
           {serverMode && (
             <Notice>
-              The existing Flask profile endpoint currently persists bio,
-              favorite categories and favorite fandoms. Display name and avatar
-              remain backend contract gaps; the UI will not pretend they were
-              saved.
+              The current Flask profile contract persists the authenticated user
+              record, including favorite fandoms and display preferences. The UI
+              stays aligned to the server contract and does not invent legacy
+              demo-only fields.
             </Notice>
           )}
 
           <div className="profile-identity">
             <div className="profile-avatar">
-              {avatar ? <img src={avatar} alt="Your avatar" /> : user.name.slice(0, 1)}
+              {avatar ? (
+                <img src={avatar} alt="Your avatar" />
+              ) : (
+                user.name.slice(0, 1)
+              )}
             </div>
             <div>
               <h2>{user.name}</h2>
@@ -535,16 +554,6 @@ function Profile() {
               maxLength={60}
               value={name}
               onChange={(event) => setName(event.target.value)}
-            />
-          </Field>
-
-          <Field label="A little about you">
-            <textarea
-              value={bio}
-              onChange={(event) => setBio(event.target.value)}
-              maxLength={500}
-              rows={3}
-              placeholder="Tell us which worlds you love..."
             />
           </Field>
 
@@ -604,7 +613,8 @@ function Profile() {
             ) : (
               <>
                 <p className="muted">
-                  {bookmarkCount} saved {bookmarkCount === 1 ? "discovery" : "discoveries"}.
+                  {bookmarkCount} saved{" "}
+                  {bookmarkCount === 1 ? "discovery" : "discoveries"}.
                 </p>
                 <div className="stack">
                   {bookmarkItems.slice(0, 3).map((item) => (

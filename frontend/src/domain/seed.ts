@@ -1,6 +1,8 @@
 import type { Category, Content, ContentType, Database } from "./types";
 import { FANDOM_CATEGORIES } from "../shared/catalog/taxonomy";
-export const categories: Category[] = FANDOM_CATEGORIES.map((category) => ({ ...category }));
+export const categories: Category[] = FANDOM_CATEGORIES.map((category) => ({
+  ...category,
+}));
 const rows: [string, string, ContentType, string, string, string][] = [
   [
     "anime",
@@ -242,21 +244,29 @@ export function initialDatabase(): Database {
         id: "u-member",
         name: "Alex Morgan",
         email: "fan@fanhub.demo",
-        role: "member",
-        favoriteCategories: ["anime", "gaming"],
-        favoriteFandoms: ["Neon Horizon"],
-        bio: "Collecting stories and finding my next universe.",
-        suspended: false,
+        avatar: null,
+        role: "user",
+        status: "active",
+        favorite_fandoms: ["Neon Horizon"],
+        display_preferences: {
+          favoriteCategories: ["anime", "gaming"],
+        },
+        created_at: "2026-10-01T00:00:00.000Z",
+        updated_at: "2026-10-01T00:00:00.000Z",
       },
       {
         id: "u-admin",
         name: "Studio Admin",
         email: "admin@fanhub.demo",
+        avatar: null,
         role: "admin",
-        favoriteCategories: [],
-        favoriteFandoms: [],
-        bio: "Demo editorial team",
-        suspended: false,
+        status: "active",
+        favorite_fandoms: [],
+        display_preferences: {
+          favoriteCategories: [],
+        },
+        created_at: "2026-10-01T00:00:00.000Z",
+        updated_at: "2026-10-01T00:00:00.000Z",
       },
     ],
     events: [

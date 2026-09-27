@@ -1,21 +1,25 @@
 import type { User } from "../../domain/types";
 import type { PublicProfile } from "../types";
 import { apiClient } from "../../shared/http/client";
-import type { FandomCategoryId } from "../../shared/catalog/taxonomy";
 
 export interface ProfileServerPatch {
-  bio: string;
-  favoriteCategories: FandomCategoryId[];
-  favoriteFandoms: string[];
+  name?: string;
+  avatar?: string | null;
+  favorite_fandoms?: string[];
+  display_preferences?: Record<string, unknown>;
 }
 
 export const profileApi = {
   current: (signal?: AbortSignal) =>
-    apiClient.get<{ user: User | null }>("/auth/me", { signal }),
+    apiClient.get<{ user: User | null }>("/users/me", { signal }),
 
   update: (patch: ProfileServerPatch, signal?: AbortSignal) =>
-    apiClient.patch<{ user: User }>("/auth/profile", patch, { signal }),
+    apiClient.put<{ message?: string; user: User }>("/users/me", patch, {
+      signal,
+    }),
 
   publicProfile: (id: string, signal?: AbortSignal) =>
-    apiClient.get<PublicProfile>(`/users/${encodeURIComponent(id)}`, { signal }),
+    apiClient.get<PublicProfile>(`/users/${encodeURIComponent(id)}`, {
+      signal,
+    }),
 };

@@ -1,10 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Category, Content, User } from "../../domain/types";
 import { useAuth } from "../auth/AuthProvider";
 import { useApp } from "../../lib/store";
@@ -106,9 +100,19 @@ export function useHomeCatalog(user: User | null) {
   const [categoryWarning, setCategoryWarning] = useState("");
 
   const favoriteCategory = useMemo<FandomCategoryId | null>(() => {
-    const found = user?.favoriteCategories.find(isFandomCategoryId);
+    const favoriteCategories = Array.isArray(
+      (
+        user?.display_preferences as
+          | { favoriteCategories?: string[] }
+          | undefined
+      )?.favoriteCategories,
+    )
+      ? ((user?.display_preferences as { favoriteCategories?: string[] })
+          .favoriteCategories as string[])
+      : [];
+    const found = favoriteCategories.find(isFandomCategoryId);
     return found || null;
-  }, [user?.favoriteCategories.join("|")]);
+  }, [user?.display_preferences]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -173,12 +177,21 @@ export function useHomeCatalog(user: User | null) {
     for (const content of [...favoriteItems, ...featured]) {
       if (!deduped.has(content.id)) deduped.set(content.id, content);
     }
+    const favoriteCategories = Array.isArray(
+      (
+        user?.display_preferences as
+          | { favoriteCategories?: string[] }
+          | undefined
+      )?.favoriteCategories,
+    )
+      ? ((user?.display_preferences as { favoriteCategories?: string[] })
+          .favoriteCategories as string[])
+      : [];
+    const favoriteFandoms = user?.favorite_fandoms ?? [];
     return [...deduped.values()]
       .map((content) => {
-        const categoryMatch = user?.favoriteCategories.includes(
-          content.categoryId,
-        );
-        const fandomMatch = user?.favoriteFandoms.includes(content.fandom);
+        const categoryMatch = favoriteCategories.includes(content.categoryId);
+        const fandomMatch = favoriteFandoms.includes(content.fandom);
         return {
           content,
           reason: categoryMatch
@@ -195,7 +208,12 @@ export function useHomeCatalog(user: User | null) {
       .sort((a, b) => b.score - a.score)
       .slice(0, 4)
       .map(({ content, reason }) => ({ content, reason }));
-  }, [featured, favoriteItems, user]);
+  }, [
+    featured,
+    favoriteItems,
+    user?.favorite_fandoms,
+    user?.display_preferences,
+  ]);
 
   return {
     categories: categories.length ? categories : [...FANDOM_CATEGORIES],
@@ -280,8 +298,7 @@ export function useContentDetail(id: string): ContentDetailState {
       .then((nextDb) => {
         if (nextDb) setDb(nextDb);
       })
-      .catch(() => {
-      });
+      .catch(() => {});
   }, [detail?.content.id, user?.id, setDb]);
 
   return { detail, loading, error, notFound };
@@ -298,12 +315,7 @@ export function useContentRating(
 
   useEffect(() => {
     setRating(initial);
-  }, [
-    contentId,
-    initial.userRating,
-    initial.average,
-    initial.count,
-  ]);
+  }, [contentId, initial.userRating, initial.average, initial.count]);
 
   const rate = useCallback(
     async (value: number) => {
@@ -314,12 +326,7 @@ export function useContentRating(
       setPending(true);
 
       try {
-        const result = await catalogDataSource.rate(
-          db,
-          contentId,
-          value,
-          user,
-        );
+        const result = await catalogDataSource.rate(db, contentId, value, user);
         if (result.legacyDb) setDb(result.legacyDb);
         setRating(result.rating);
         notify("Your rating has been saved.");
