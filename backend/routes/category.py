@@ -19,37 +19,14 @@ category_bp = Blueprint(
 )
 
 
-# ============================================================
-# GET ALL CATEGORIES
-# GET /categories
-#
-# Có hỗ trợ:
-# GET /categories
-# GET /categories?search=Anime
-#
-# User có thể xem
-# ============================================================
-
 @category_bp.get("")
 def get_categories_api():
 
-    # --------------------------------
-    # Get search keyword
-    # --------------------------------
-
     search = request.args.get("search")
-
-    # --------------------------------
-    # Get categories
-    # --------------------------------
 
     categories = category_crud.get_all_categories(
         search=search
     )
-
-    # --------------------------------
-    # Response
-    # --------------------------------
 
     return jsonify({
         "success": True,
@@ -62,27 +39,12 @@ def get_categories_api():
     }), 200
 
 
-# ============================================================
-# GET ONE CATEGORY
-# GET /categories/<category_id>
-#
-# User có thể xem
-# ============================================================
-
 @category_bp.get("/<int:category_id>")
 def get_category_api(category_id):
-
-    # --------------------------------
-    # Get category
-    # --------------------------------
 
     category = category_crud.get_category(
         category_id
     )
-
-    # --------------------------------
-    # Category not found
-    # --------------------------------
 
     if category is None:
 
@@ -91,17 +53,9 @@ def get_category_api(category_id):
             "error": "Category not found."
         }), 404
 
-    # --------------------------------
-    # Convert to Pydantic response
-    # --------------------------------
-
     response = CategoryResponse.model_validate(
         category
     )
-
-    # --------------------------------
-    # Response
-    # --------------------------------
 
     return jsonify({
         "success": True,
@@ -111,29 +65,14 @@ def get_category_api(category_id):
     }), 200
 
 
-# ============================================================
-# CREATE CATEGORY
-# POST /categories
-#
-# CHỈ ADMIN
-# ============================================================
-
 @category_bp.post("")
 @admin_required
 def create_category_api():
-
-    # --------------------------------
-    # Get request data
-    # --------------------------------
 
     data = (
         request.get_json(silent=True)
         or request.form.to_dict()
     )
-
-    # --------------------------------
-    # Pydantic validation
-    # --------------------------------
 
     try:
 
@@ -148,10 +87,6 @@ def create_category_api():
             "error": e.errors()
         }), 400
 
-    # --------------------------------
-    # Create category
-    # --------------------------------
-
     category, err_msg, status_code = (
         category_crud.create_category(
             category_data.name,
@@ -159,20 +94,12 @@ def create_category_api():
         )
     )
 
-    # --------------------------------
-    # CRUD error
-    # --------------------------------
-
     if err_msg:
 
         return jsonify({
             "success": False,
             "error": err_msg
         }), status_code
-
-    # --------------------------------
-    # Response
-    # --------------------------------
 
     response = CategoryResponse.model_validate(
         category
@@ -186,29 +113,14 @@ def create_category_api():
     }), 201
 
 
-# ============================================================
-# UPDATE CATEGORY
-# PUT /categories/<category_id>
-#
-# CHỈ ADMIN
-# ============================================================
-
 @category_bp.put("/<int:category_id>")
 @admin_required
 def update_category_api(category_id):
-
-    # --------------------------------
-    # Get request data
-    # --------------------------------
 
     data = (
         request.get_json(silent=True)
         or request.form.to_dict()
     )
-
-    # --------------------------------
-    # Pydantic validation
-    # --------------------------------
 
     try:
 
@@ -223,17 +135,9 @@ def update_category_api(category_id):
             "error": e.errors()
         }), 400
 
-    # --------------------------------
-    # Get only fields sent by client
-    # --------------------------------
-
     update_data = category_data.model_dump(
         exclude_unset=True
     )
-
-    # --------------------------------
-    # Update category
-    # --------------------------------
 
     category, err_msg, status_code = (
         category_crud.update_category(
@@ -242,20 +146,12 @@ def update_category_api(category_id):
         )
     )
 
-    # --------------------------------
-    # CRUD error
-    # --------------------------------
-
     if err_msg:
 
         return jsonify({
             "success": False,
             "error": err_msg
         }), status_code
-
-    # --------------------------------
-    # Response
-    # --------------------------------
 
     response = CategoryResponse.model_validate(
         category
@@ -269,20 +165,9 @@ def update_category_api(category_id):
     }), 200
 
 
-# ============================================================
-# DELETE CATEGORY
-# DELETE /categories/<category_id>
-#
-# CHỈ ADMIN
-# ============================================================
-
 @category_bp.delete("/<int:category_id>")
 @admin_required
 def delete_category_api(category_id):
-
-    # --------------------------------
-    # Delete category
-    # --------------------------------
 
     category, err_msg, status_code = (
         category_crud.delete_category(
@@ -290,20 +175,12 @@ def delete_category_api(category_id):
         )
     )
 
-    # --------------------------------
-    # CRUD error
-    # --------------------------------
-
     if err_msg:
 
         return jsonify({
             "success": False,
             "error": err_msg
         }), status_code
-
-    # --------------------------------
-    # Success
-    # --------------------------------
 
     return jsonify({
         "success": True,

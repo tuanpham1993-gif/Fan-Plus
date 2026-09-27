@@ -16,7 +16,6 @@ from crud.bookmark import (
 
 bookmark_bp = Blueprint("bookmark",__name__,url_prefix="/bookmarks")
 
-# POST /bookmarks
 @bookmark_bp.post("")
 @token_required
 def create_bookmark_api():
@@ -37,7 +36,6 @@ def create_bookmark_api():
         .model_dump(mode="json")
     ), 201
 
-# GET /bookmarks
 @bookmark_bp.get("")
 @token_required
 def get_bookmarks_api():
@@ -69,7 +67,6 @@ def get_bookmarks_api():
         for bookmark in bookmarks
     ]), 200
 
-# GET /bookmarks/<content_id>
 @bookmark_bp.get("/<int:content_id>")
 @token_required
 def get_bookmark_api(content_id):
@@ -91,7 +88,6 @@ def get_bookmark_api(content_id):
             .model_dump(mode="json")
     }), 200
 
-# DELETE /bookmarks/<content_id>
 @bookmark_bp.delete("/<int:content_id>")
 @token_required
 def delete_bookmark_api(content_id):

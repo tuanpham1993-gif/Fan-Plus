@@ -7,8 +7,6 @@ function safeMediaSource(value?: string) {
   if (!candidate) return "";
 
   try {
-    // document.baseURI also works in the offline UI harness, where the page
-    // itself is about:blank but the application has an explicit <base>.
     const base = new URL(document.baseURI);
     const parsed = new URL(candidate, base);
     const sameOrigin = parsed.origin === base.origin;

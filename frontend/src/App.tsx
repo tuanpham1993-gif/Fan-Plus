@@ -20,6 +20,10 @@ const Assistant = React.lazy(() => import("./features/Lore"));
 const Utility = React.lazy(() => import("./pages/Utility"));
 const MemberProfile = React.lazy(() => import("./pages/MemberProfile"));
 const Releases = React.lazy(() => import("./pages/Releases"));
+const Categories = React.lazy(() => import("./pages/Categories"));
+const Characters = React.lazy(() => import("./pages/Characters"));
+const Merchandise = React.lazy(() => import("./pages/Merchandise"));
+const ResourceDetail = React.lazy(() => import("./pages/ResourceDetail"));
 export class ErrorBoundary extends React.Component<
   {
     children: React.ReactNode;
@@ -60,6 +64,9 @@ export default function App() {
       "/explore": "Explore",
       "/events": "Events",
       "/showcase": "Showcase",
+      "/categories": "Explore categories",
+      "/characters": "Characters",
+      "/merchandise": "Merchandise",
       "/dashboard": "Your workspace",
       "/collection": "Your collection",
       "/admin": "Editorial workspace",
@@ -86,9 +93,24 @@ export default function App() {
     );
   else if (pathname === "/") page = <Home />;
   else if (
-    ["/explore", "/media", "/characters", "/showcase"].includes(pathname)
+    ["/explore", "/media", "/showcase"].includes(pathname)
   )
     page = <Explore key={pathname} mode={pathname.slice(1)} />;
+  else if (pathname === "/categories") page = <Categories />;
+  else if (pathname === "/characters") page = <Characters />;
+  else if (pathname.startsWith("/characters/") && pathname.split("/").length === 3) {
+    const id = Number(decodeURIComponent(pathname.slice("/characters/".length)));
+    page = Number.isInteger(id) && id > 0
+      ? <ResourceDetail key={pathname} kind="character" id={id} />
+      : <Utility mode="404" />;
+  }
+  else if (pathname === "/merchandise") page = <Merchandise />;
+  else if (pathname.startsWith("/merchandise/") && pathname.split("/").length === 3) {
+    const id = Number(decodeURIComponent(pathname.slice("/merchandise/".length)));
+    page = Number.isInteger(id) && id > 0
+      ? <ResourceDetail key={pathname} kind="merchandise" id={id} />
+      : <Utility mode="404" />;
+  }
   else if (pathname.startsWith("/content/") && pathname.split("/").length === 3)
     page = <Detail key={pathname} id={decodeURIComponent(pathname.slice(9))} />;
   else if (pathname === "/events") page = <Events />;

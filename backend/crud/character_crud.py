@@ -6,7 +6,7 @@ from extensions import db
 
 def get_character(character_id):
     return db.session.get(Character, character_id)
-    
+
 
 def get_characters(
     category_id=None,
@@ -45,6 +45,26 @@ def get_characters(
         pagination.items,
         pagination.total,
         pagination.pages
+    )
+
+
+def search_characters(search, limit=10):
+    search = str(search or "").strip().lower()
+
+    if not search:
+        return []
+
+    query = Character.query.filter(
+        db.func.lower(
+            Character.name
+        ).like(f"%{search}%")
+    )
+
+    return (
+        query
+        .order_by(Character.created_at.desc())
+        .limit(limit)
+        .all()
     )
 
 
@@ -132,8 +152,6 @@ def delete_character(character_id):
     if character is None:
         return None, "Character not found.", 404
 
-    # Keep merchandise items.
-    # Only remove their character reference.
     MerchandiseItem.query.filter_by(
         character_id=character_id
     ).update({

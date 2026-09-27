@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useLocation, navigate } from "../lib/router";
+import { useLocation, navigate, Link } from "../lib/router";
 import {
   Button,
   Icon,
@@ -90,7 +90,7 @@ export default function Explore({ mode = "explore" }: { mode?: string }) {
     : [...new Set(result.items.map((content) => content.fandom))].sort();
   const years = result.facets?.years?.length ? result.facets.years : [2026, 2025, 2024];
 
-  const active: Array<[string, string]> = [
+  const active = ([
     ["q", query.q || ""],
     ["category", query.category || ""],
     ["fandom", query.fandom || ""],
@@ -98,7 +98,7 @@ export default function Explore({ mode = "explore" }: { mode?: string }) {
     ["year", query.year || ""],
     ["popular", query.popular ? "true" : ""],
     ...(mode === "explore" && query.type ? [["type", query.type] as [string, string]] : []),
-  ].filter(([, value]) => Boolean(value));
+  ] as Array<[string, string]>).filter(([, value]) => Boolean(value));
 
   return (
     <>
@@ -116,7 +116,11 @@ export default function Explore({ mode = "explore" }: { mode?: string }) {
           },
         ]}
       />
-      <PageHeading eyebrow="THE DISCOVERY DESK" title={title} description={desc} />
+      <PageHeading eyebrow="THE DISCOVERY DESK" title={title} description={desc}>
+        <Link className="btn btn-secondary" to="/categories">
+          Browse categories <Icon name="arrow" size={15} />
+        </Link>
+      </PageHeading>
       {mode === "showcase" && (
         <Notice>
           No cart, checkout, payments or orders. All objects and release information in this prototype are fictional concepts.

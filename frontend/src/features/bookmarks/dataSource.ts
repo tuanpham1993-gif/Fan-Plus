@@ -188,7 +188,6 @@ const demoContentDataSource: ContentBookmarkDataSource = {
 
     let nextDb = currentDb;
     if (Boolean(existing) !== bookmarked) {
-      // Demo compatibility only. Connected mode never uses repository bookmarks.
       nextDb = await repository.toggleBookmark(content.id);
     }
 

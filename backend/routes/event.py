@@ -64,7 +64,6 @@ def get_events_api():
         ]
     }), 200
 
-# POST /events
 @event_bp.post("")
 @token_required
 def create_event_api():
@@ -140,7 +139,6 @@ def create_event_api():
         ]
     }), 201
 
-# PUT /events/<event_id>
 @event_bp.put("/<int:event_id>")
 @token_required
 def update_event_api(event_id):
@@ -173,7 +171,6 @@ def update_event_api(event_id):
         .model_dump(mode="json")
     ), 200
 
-# DELETE /events/<event_id>
 @event_bp.delete("/<int:event_id>")
 @admin_required
 def delete_event_api(event_id):

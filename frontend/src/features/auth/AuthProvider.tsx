@@ -40,9 +40,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const applyUser = useCallback((next: User | null) => {
     setUser(next);
     setStatus(next ? "authenticated" : "unauthenticated");
-    // Temporary compatibility only: untouched legacy account operations still use
-    // the demo repository. Connected authentication never reads this shadow as
-    // its source of truth; GET /auth/me remains authoritative.
     if (serverMode) repository.syncLegacyAuthShadow(next);
   }, []);
 

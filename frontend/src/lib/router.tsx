@@ -1,5 +1,4 @@
 import React, { useSyncExternalStore } from "react";
-/** A small navigation port keeps routing independently testable. Production uses native History. */
 export interface NavigationPort {
   read: () => string;
   push: (to: string, replace: boolean) => void;
@@ -22,7 +21,6 @@ const browserPort: NavigationPort = {
   },
 };
 let port = browserPort;
-/** Configure once before mounting. Used by the offline UI integration harness, not by production startup. */
 export function configureNavigationPort(next: NavigationPort) {
   port = next;
 }

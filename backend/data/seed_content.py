@@ -89,7 +89,6 @@ def seed_contents():
 
     for item in contents:
 
-        # Find author
         author = User.query.filter_by(
             email=item["author"]
         ).first()
@@ -101,7 +100,6 @@ def seed_contents():
             )
             continue
 
-        # Find category
         category = Category.query.filter_by(
             name=item["category"]
         ).first()
@@ -113,7 +111,6 @@ def seed_contents():
             )
             continue
 
-        # Check if content already exists
         existing_content = Content.query.filter_by(
             title=item["title"],
             author_id=author.id

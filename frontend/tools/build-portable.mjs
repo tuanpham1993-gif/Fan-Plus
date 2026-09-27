@@ -1,4 +1,3 @@
-/** Offline preview compiler. This transpiles TypeScript; run npm run build for semantic type-checking. */
 import { createRequire } from 'node:module';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';

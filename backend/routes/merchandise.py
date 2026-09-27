@@ -5,6 +5,7 @@ from crud import merchandise_crud
 
 from schema.merchandise_schema import (
     MerchandiseCreate,
+    MerchandiseUpdate,
     MerchandiseResponse
 )
 
@@ -21,12 +22,6 @@ merchandise_bp = Blueprint(
     url_prefix="/merchandise"
 )
 
-
-# ============================================================
-# GET ALL MERCHANDISE
-# GET /merchandise
-# Visitor + User + Admin
-# ============================================================
 
 @merchandise_bp.get("")
 def get_merchandise_api():
@@ -50,6 +45,11 @@ def get_merchandise_api():
         "is_upcoming"
     )
 
+    search = request.args.get(
+        "search",
+        type=str
+    )
+
     page = request.args.get(
         "page",
         default=1,
@@ -68,6 +68,7 @@ def get_merchandise_api():
             character_id=character_id,
             tag=tag,
             is_upcoming=is_upcoming,
+            search=search,              
             page=page,
             limit=limit
         )
@@ -89,12 +90,6 @@ def get_merchandise_api():
         }
     }), 200
 
-
-# ============================================================
-# GET MERCHANDISE DETAIL
-# GET /merchandise/<merchandise_id>
-# Visitor + User + Admin
-# ============================================================
 
 @merchandise_bp.get("/<int:merchandise_id>")
 def get_merchandise_detail_api(merchandise_id):
@@ -121,35 +116,16 @@ def get_merchandise_detail_api(merchandise_id):
     }), 200
 
 
-# ============================================================
-# CREATE MERCHANDISE
-# POST /merchandise
-# multipart/form-data
-# User + Admin
-# ============================================================
-
 @merchandise_bp.post("")
 @token_required
 def create_merchandise_api():
 
-    # --------------------------------
-    # Lấy dữ liệu từ form
-    # --------------------------------
-
     data = request.form.to_dict()
-
-    # --------------------------------
-    # Lấy file ảnh
-    # --------------------------------
 
     image = request.files.get("image")
 
     if image is None:
         image = request.files.get("image_url")
-
-    # --------------------------------
-    # Validate ảnh
-    # --------------------------------
 
     if image and image.filename:
 
@@ -161,10 +137,6 @@ def create_merchandise_api():
                 "success": False,
                 "error": err
             }), 400
-
-    # --------------------------------
-    # Validate bằng Pydantic
-    # --------------------------------
 
     try:
 
@@ -179,15 +151,7 @@ def create_merchandise_api():
             "error": e.errors()
         }), 400
 
-    # --------------------------------
-    # Pydantic → dict
-    # --------------------------------
-
     data = merchandise_data.model_dump()
-
-    # --------------------------------
-    # Upload ảnh
-    # --------------------------------
 
     if image and image.filename:
 
@@ -208,10 +172,6 @@ def create_merchandise_api():
                 "error": "Could not save uploaded image."
             }), 500
 
-    # --------------------------------
-    # Create merchandise
-    # --------------------------------
-
     item, err_msg, status_code = (
         merchandise_crud.create_merchandise(
             **data
@@ -225,10 +185,6 @@ def create_merchandise_api():
             "error": err_msg
         }), status_code
 
-    # --------------------------------
-    # Response
-    # --------------------------------
-
     response = MerchandiseResponse.model_validate(
         item
     )
@@ -239,3 +195,85 @@ def create_merchandise_api():
             mode="json"
         )
     }), 201
+
+
+@merchandise_bp.put("/<int:merchandise_id>")
+@token_required
+def update_merchandise_api(merchandise_id):
+
+    existing_item = merchandise_crud.get_merchandise(merchandise_id)
+    if existing_item is None:
+        return jsonify({
+            "success": False,
+            "error": "Merchandise not found."
+        }), 404
+
+    data = request.form.to_dict()
+    image = request.files.get("image")
+
+    if image is None:
+        image = request.files.get("image_url")
+
+    if image and image.filename:
+        valid, err = validate_image_file(image)
+        if not valid:
+            return jsonify({"success": False, "error": err}), 400
+
+    for field in ("character_id", "tag"):
+        if field in data and data[field] == "":
+            data[field] = None
+
+    try:
+        merchandise_data = MerchandiseUpdate(**data)
+    except ValidationError as exc:
+        return jsonify({
+            "success": False,
+            "error": exc.errors()
+        }), 400
+
+    update_data = merchandise_data.model_dump(exclude_unset=True)
+
+    if image and image.filename:
+        category_id = update_data.get("category_id") or existing_item.category_id
+        try:
+            update_data["image_url"] = save_file(
+                image,
+                folder="merchandise",
+                category_id=category_id
+            )
+        except (OSError, ValueError):
+            return jsonify({
+                "success": False,
+                "error": "Could not save uploaded image."
+            }), 500
+
+    item, err_msg, status_code = merchandise_crud.update_merchandise(
+        merchandise_id,
+        **update_data
+    )
+
+    if err_msg:
+        return jsonify({"success": False, "error": err_msg}), status_code
+
+    response = MerchandiseResponse.model_validate(item)
+    return jsonify({
+        "success": True,
+        "data": response.model_dump(mode="json")
+    }), 200
+
+
+@merchandise_bp.delete("/<int:merchandise_id>")
+@token_required
+def delete_merchandise_api(merchandise_id):
+
+    item, err_msg, status_code = merchandise_crud.delete_merchandise(
+        merchandise_id
+    )
+
+    if err_msg:
+        return jsonify({"success": False, "error": err_msg}), status_code
+
+    return jsonify({
+        "success": True,
+        "message": "Merchandise deleted successfully."
+    }), 200

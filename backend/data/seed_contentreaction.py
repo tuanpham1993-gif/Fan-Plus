@@ -55,7 +55,6 @@ def seed_content_reactions():
             )
             continue
 
-        # One reaction per user per content
         existing_reaction = ContentReaction.query.filter_by(
             user_id=user.id,
             content_id=content.id

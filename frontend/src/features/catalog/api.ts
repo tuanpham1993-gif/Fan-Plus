@@ -28,7 +28,6 @@ export interface CatalogPage extends Page<Content> {
 }
 
 export interface ContentRatingSummary {
-  /** Current authenticated member's rating; 0 means not rated. */
   userRating: number;
   average: number;
   count: number;

@@ -21,12 +21,6 @@ character_bp = Blueprint(
 )
 
 
-# ============================================================
-# GET ALL CHARACTERS
-# GET /characters
-# Visitor + User + Admin
-# ============================================================
-
 @character_bp.get("")
 def get_characters_api():
 
@@ -108,10 +102,6 @@ def create_character_api():
     if image is None:
         image = request.files.get("image_url")
 
-    # --------------------------------
-    # Kiểm tra ảnh
-    # --------------------------------
-
     if image and image.filename:
 
         valid, err = validate_image_file(image)
@@ -123,10 +113,6 @@ def create_character_api():
                 "error": err
             }), 400
 
-    # --------------------------------
-    # Validate dữ liệu Character
-    # --------------------------------
-
     try:
 
         character_data = CharacterCreate.model_validate(data)
@@ -137,10 +123,6 @@ def create_character_api():
             "success": False,
             "error": exc.errors()[0]["msg"]
         }), 400
-
-    # --------------------------------
-    # Lưu ảnh
-    # --------------------------------
 
     if image and image.filename:
 
@@ -162,10 +144,6 @@ def create_character_api():
     else:
 
         image_url = character_data.image_url
-
-    # --------------------------------
-    # Tạo Character
-    # --------------------------------
 
     character, err_msg, status_code = (
         character_crud.create_character(
@@ -189,20 +167,9 @@ def create_character_api():
     }), 201
 
 
-# ============================================================
-# UPDATE CHARACTER
-# PUT /characters/<character_id>
-# multipart/form-data
-# User + Admin
-# ============================================================
-
 @character_bp.put("/<int:character_id>")
 @token_required
 def update_character_api(character_id):
-
-    # --------------------------------
-    # Kiểm tra Character tồn tại
-    # --------------------------------
 
     existing_character = (
         character_crud.get_character(
@@ -217,10 +184,6 @@ def update_character_api(character_id):
             "error": "Character not found."
         }), 404
 
-    # --------------------------------
-    # Lấy dữ liệu từ form
-    # --------------------------------
-
     data = request.form.to_dict()
 
     if request.form.get("category_id") is not None:
@@ -230,18 +193,10 @@ def update_character_api(character_id):
             type=int
         )
 
-    # --------------------------------
-    # Lấy ảnh
-    # --------------------------------
-
     image = request.files.get("image")
 
     if image is None:
         image = request.files.get("image_url")
-
-    # --------------------------------
-    # Validate ảnh
-    # --------------------------------
 
     if image and image.filename:
 
@@ -253,10 +208,6 @@ def update_character_api(character_id):
                 "success": False,
                 "error": err
             }), 400
-
-    # --------------------------------
-    # Validate dữ liệu
-    # --------------------------------
 
     try:
 
@@ -272,10 +223,6 @@ def update_character_api(character_id):
     update_data = character_data.model_dump(
         exclude_unset=True
     )
-
-    # --------------------------------
-    # Upload ảnh mới nếu có
-    # --------------------------------
 
     if image and image.filename:
 
@@ -301,10 +248,6 @@ def update_character_api(character_id):
                 "error": "Could not save uploaded image."
             }), 500
 
-    # --------------------------------
-    # Update Character
-    # --------------------------------
-
     character, err_msg, status_code = (
         character_crud.update_character(
             character_id,
@@ -324,12 +267,6 @@ def update_character_api(character_id):
         "data": character.to_dict()
     }), 200
 
-
-# ============================================================
-# DELETE CHARACTER
-# DELETE /characters/<character_id>
-# User + Admin
-# ============================================================
 
 @character_bp.delete("/<int:character_id>")
 @token_required

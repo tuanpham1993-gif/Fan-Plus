@@ -19,7 +19,6 @@ const DB_KEY = "fanhub.demo.db.v1",
   SESSION_KEY = "fanhub.demo.identity.v1",
   CREDENTIALS_KEY = "fanhub.demo.verifiers.v1";
 const sleep = (ms = 160) => new Promise((resolve) => setTimeout(resolve, ms));
-// Mirrors backend/fanhub/security.py's DISPOSABLE_EMAIL_DOMAINS for the local demo path.
 const DISPOSABLE_EMAIL_DOMAINS = new Set([
   "mailinator.com", "10minutemail.com", "10minutemail.net", "guerrillamail.com",
   "guerrillamail.info", "guerrillamail.biz", "guerrillamail.de", "sharklasers.com",
@@ -58,7 +57,6 @@ function readDb(): Database {
     )
       return d;
   } catch {
-    /* A corrupt demo store should never blank the app. */
   }
   return initialDatabase();
 }
@@ -79,9 +77,6 @@ function emit(name: string) {
 function syncLegacyAuthShadow(user: User | null): Database {
   const db = readDb();
 
-  // This browser-backed record is a temporary compatibility projection for
-  // legacy features. It must never be allowed to decide, or break, connected
-  // authentication: the backend session remains the source of truth.
   try {
     if (user) {
       db.users = db.users.filter((u) => u.id !== user.id);
@@ -92,8 +87,6 @@ function syncLegacyAuthShadow(user: User | null): Database {
       sessionStorage.removeItem(SESSION_KEY);
     }
   } catch {
-    // Ignore compatibility-storage failures in connected mode. AuthProvider
-    // will still reflect the server-authenticated session correctly.
   }
 
   emit(LEGACY_DB_CHANGED_EVENT);
@@ -137,16 +130,11 @@ async function setPassword(email: string, password: string) {
   records[email] = { salt, hash: await verifier(password, salt) };
   sessionStorage.setItem(CREDENTIALS_KEY, JSON.stringify(records));
 }
-// This repository is a UI simulator, NOT an authentication or authorization boundary.
-// A deployed application must perform every check again on a trusted backend.
 export const repository = {
   async load(): Promise<Database> {
     await sleep();
     return readDb();
   },
-  // Transitional compatibility helpers. AuthProvider owns authentication state;
-  // these methods only keep legacy browser-backed features working until their
-  // data ownership is migrated in later chunks.
   syncLegacyAuthShadow(user: User | null) {
     return syncLegacyAuthShadow(user);
   },

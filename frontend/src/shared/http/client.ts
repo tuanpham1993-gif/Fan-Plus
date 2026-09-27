@@ -1,4 +1,3 @@
-// Shared HTTP boundary for Flask-backed frontend feature.
 declare global {
   interface Window {
     FANHUB_RUNTIME?: { api: boolean };
@@ -43,11 +42,12 @@ export function clearTokens() {
 }
 
 export function clearCsrf() {
-  // Legacy stub for CSRF clear
 }
 
 export interface ApiRequestOptions extends RequestInit {
   timeoutMs?: number;
+  unwrapData?: boolean;
+  apiPrefix?: boolean;
 }
 
 export class ApiError extends Error {
@@ -62,11 +62,12 @@ export class ApiError extends Error {
   }
 }
 
-function apiUrl(path: string) {
+function apiUrl(path: string, useApiPrefix = true) {
   if (/^https?:\/\//i.test(path)) {
     throw new ApiError("Absolute API URLs are not allowed by the shared client.");
   }
-  return API_BASE_URL + (path.startsWith("/") ? path : `/${path}`);
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return useApiPrefix ? API_BASE_URL + normalizedPath : normalizedPath;
 }
 
 async function fetchWithTimeout(
@@ -128,7 +129,12 @@ export async function api<T>(
   path: string,
   options: ApiRequestOptions = {},
 ): Promise<T> {
-  const { timeoutMs = DEFAULT_TIMEOUT_MS, ...requestInit } = options;
+  const {
+    timeoutMs = DEFAULT_TIMEOUT_MS,
+    unwrapData = true,
+    apiPrefix = true,
+    ...requestInit
+  } = options;
   const method = (requestInit.method || "GET").toUpperCase();
   const headers = new Headers(requestInit.headers);
 
@@ -147,7 +153,7 @@ export async function api<T>(
   }
 
   let response = await fetchWithTimeout(
-    apiUrl(path),
+    apiUrl(path, apiPrefix),
     {
       ...requestInit,
       method,
@@ -156,7 +162,6 @@ export async function api<T>(
     timeoutMs,
   );
 
-  // If 401 Unauthorized and refresh token is available, attempt token refresh once
   if (response.status === 401 && getRefreshToken() && path !== "/auth/refresh") {
     try {
       const refreshRes = await fetchWithTimeout(
@@ -178,7 +183,7 @@ export async function api<T>(
           setTokens(newAccessToken);
           headers.set("Authorization", `Bearer ${newAccessToken}`);
           response = await fetchWithTimeout(
-            apiUrl(path),
+            apiUrl(path, apiPrefix),
             {
               ...requestInit,
               method,
@@ -202,7 +207,12 @@ export async function api<T>(
   }
   if (response.status === 204) return undefined as T;
 
-  if (payload && typeof payload === "object" && "data" in payload) {
+  if (
+    unwrapData &&
+    payload &&
+    typeof payload === "object" &&
+    "data" in payload
+  ) {
     return payload.data as T;
   }
 
@@ -212,6 +222,10 @@ export async function api<T>(
 export const apiClient = {
   get: <T>(path: string, options: Omit<ApiRequestOptions, "method"> = {}) =>
     api<T>(path, { ...options, method: "GET" }),
+  getEnvelope: <T>(
+    path: string,
+    options: Omit<ApiRequestOptions, "method"> = {},
+  ) => api<T>(path, { ...options, method: "GET", unwrapData: false }),
   post: <T>(
     path: string,
     body?: unknown,

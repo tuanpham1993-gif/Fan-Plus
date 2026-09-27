@@ -72,7 +72,6 @@ export const authApi = {
         refresh_token: refreshToken,
       });
     } catch {
-      // Ignore logout request error
     } finally {
       clearTokens();
     }

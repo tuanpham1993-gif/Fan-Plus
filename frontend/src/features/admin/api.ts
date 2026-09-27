@@ -17,9 +17,6 @@ import type {
   AdminWorkspaceEnvelope,
 } from "./types";
 
-// Chunk 8 frontend contract. The current Flask source does not yet expose
-// these /admin/* workspace routes; connected mode therefore reports the API
-// error instead of silently reading the browser demo database.
 export const ADMIN_ENDPOINTS = {
   workspace: "/admin/workspace",
   contents: "/admin/contents",

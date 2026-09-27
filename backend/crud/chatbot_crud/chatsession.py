@@ -1,5 +1,3 @@
-# crud/chatSession.py
-
 from extensions import db
 from models.chatbotModels.chatsession import ChatSession
 

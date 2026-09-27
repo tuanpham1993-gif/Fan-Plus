@@ -1,10 +1,6 @@
--- Database Schema for fan_plus
--- Created for Fan Hub Plus Project
-
 CREATE DATABASE IF NOT EXISTS `fan_plus` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE `fan_plus`;
 
--- 1. Users Table
 CREATE TABLE IF NOT EXISTS `users` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `name` VARCHAR(120) NOT NULL,
@@ -18,7 +14,6 @@ CREATE TABLE IF NOT EXISTS `users` (
   INDEX `idx_users_email` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 2. Refresh Tokens Table
 CREATE TABLE IF NOT EXISTS `refresh_tokens` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `user_id` INT NOT NULL,
@@ -31,7 +26,6 @@ CREATE TABLE IF NOT EXISTS `refresh_tokens` (
   INDEX `idx_refresh_tokens_token` (`token`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 3. Feedbacks Table
 CREATE TABLE IF NOT EXISTS `feedbacks` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `user_id` INT NOT NULL,

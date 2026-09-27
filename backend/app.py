@@ -1,16 +1,12 @@
 import os
 import pymysql
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, send_from_directory
 
 from config import Config
 from extensions import db, jwt, cors
 from routes import register_blueprints
 from seed import seed_database
-
-# ==========================================
-# Check MySQL connection
-# ==========================================
 
 def check_mysql_connection(uri):
     try:
@@ -40,23 +36,11 @@ def check_mysql_connection(uri):
         return False
 
 
-# ==========================================
-# Create Flask application
-# ==========================================
-
 def create_app():
 
     app = Flask(__name__)
 
-    # ==========================================
-    # Configuration
-    # ==========================================
-
     app.config.from_object(Config)
-
-    # ==========================================
-    # Database configuration
-    # ==========================================
 
     use_mysql = check_mysql_connection(Config.MYSQL_DB_URI)
 
@@ -69,10 +53,6 @@ def create_app():
 
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-    # ==========================================
-    # Initialize extensions
-    # ==========================================
-
     db.init_app(app)
     jwt.init_app(app)
 
@@ -81,11 +61,6 @@ def create_app():
         resources={r"/api/*": {"origins": "*"}}
     )
 
-    # ==========================================
-    # Register main routes
-    # ==========================================
-
-    # Các route hiện tại của origin/tam
     from routes.category import category_bp
     from routes.character import character_bp
     from routes.merchandise import merchandise_bp
@@ -94,30 +69,21 @@ def create_app():
     app.register_blueprint(character_bp)
     app.register_blueprint(merchandise_bp)
 
-    # ==========================================
-    # Register other routes
-    # ==========================================
-
-    # Các route của HEAD
     register_blueprints(app)
-
-    # ==========================================
-    # Create database tables
-    # ==========================================
 
     with app.app_context():
         try:
             db.create_all()
 
-            # seed_database()
-            # print("Database initialized and seeded successfully!")
-
         except Exception as err:
             print(f"Database init warning: {err}")
 
-    # ==========================================
-    # Health check
-    # ==========================================
+    @app.route("/uploads/<path:filename>", methods=["GET"])
+    def uploaded_file(filename):
+        return send_from_directory(
+            os.path.join(os.getcwd(), "uploads"),
+            filename
+        )
 
     @app.route("/api/health", methods=["GET"])
     def health_check():
@@ -129,10 +95,6 @@ def create_app():
                 "SQLALCHEMY_DATABASE_URI"
             ].split("://")[0]
         }), 200
-
-    # ==========================================
-    # Error handlers
-    # ==========================================
 
     @app.errorhandler(404)
     def not_found(e):

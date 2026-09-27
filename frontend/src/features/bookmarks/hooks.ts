@@ -47,7 +47,6 @@ export function useCommunityBookmarks({
       const previous = savedIds.has(postId);
       const next = !previous;
 
-      // Optimistic state changes immediately. Only this post is pending.
       setSavedIds((current) => {
         const copy = new Set(current);
         if (next) copy.add(postId);
@@ -61,7 +60,6 @@ export function useCommunityBookmarks({
         setBackendSupported(true);
         return true;
       } catch (cause) {
-        // Roll back exactly this bookmark. Do not reset bookmarks on other posts.
         setSavedIds((current) => {
           const copy = new Set(current);
           if (previous) copy.add(postId);
@@ -87,6 +85,4 @@ export function useCommunityBookmarks({
   };
 }
 
-// Shared catalog reading-list hook. The provider is mounted once at app root so
-// Explore, Detail and Account observe the same optimistic bookmark state.
 export { useBookmarks } from "./BookmarksProvider";

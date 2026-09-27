@@ -27,8 +27,6 @@ const apiLoreDataSource: LoreDataSource = {
   history: (_user, signal) => loreApi.history(signal),
   send: (_user, input, signal) => loreApi.send(input, signal),
   persistDemoHistory: async () => {
-    // Connected mode persists chat history on the Backend. The browser must not
-    // become a second source of truth for server conversations.
   },
   clear: async (_user, signal) => {
     await loreApi.clear(signal);

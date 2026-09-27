@@ -43,7 +43,6 @@ def seed_feedbacks():
             )
             continue
 
-        # Prevent duplicate seed data
         existing_feedback = Feedback.query.filter_by(
             user_id=user.id,
             content=item["content"]
