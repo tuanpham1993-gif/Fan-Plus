@@ -115,10 +115,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             {navLinks}
           </nav>
           <div className="header-tools">
-            <button className="lore-header-button" onClick={() => openLore()}>
-              <Icon name="chat" size={17} />
-              <span>Ask Lore</span>
-            </button>
             <button
               className="search-trigger"
               onClick={() => setSearch(true)}

@@ -155,7 +155,7 @@ export default function Explore({ mode = "explore" }: { mode?: string }) {
 
       <div className="category-tabs" role="group" aria-label="Filter by category">
         <button className={!query.category ? "active" : ""} onClick={() => update("category", "")}>
-          All worlds
+          All categories
         </button>
         {categories.map((category) => (
           <button

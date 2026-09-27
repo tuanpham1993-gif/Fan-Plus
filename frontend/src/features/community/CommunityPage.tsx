@@ -326,23 +326,6 @@ function CommunityRail({
         </small>
       </div>
 
-      <div className="rail-lore">
-        <span className="lore-monogram">
-          L<span>m</span>
-        </span>
-        <h3>Need a little context?</h3>
-        <p>
-          Ask Lore Master about a character, a story, or how to shape your
-          review.
-        </p>
-        <button
-          onClick={() => openLore("How do I write a thoughtful film review?")}
-        >
-          Ask Lore Master
-          <Icon name="arrow" size={17} />
-        </button>
-      </div>
-
       <Link to="/giveaways" className="rail-gift">
         <div>
           <Icon name="ticket" size={23} />
