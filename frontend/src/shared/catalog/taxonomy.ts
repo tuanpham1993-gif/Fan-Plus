@@ -35,17 +35,13 @@ export function categoryLabel(value: string) {
   return CATEGORY_BY_ID.get(value)?.name || value;
 }
 
-export function canonicalizeCategories(input: readonly Category[] = []): Category[] {
-  const backend = new Map(
-    input
-      .filter((category) => isFandomCategoryId(category.id))
-      .map((category) => [category.id, category]),
-  );
 
-  return FANDOM_CATEGORIES.map((canonical) => ({
-    ...canonical,
-    ...backend.get(canonical.id),
-    id: canonical.id,
-    name: canonical.name,
-  }));
+export function canonicalizeCategories(input: readonly Category[] = []): Category[] {
+  // Nếu lấy được danh mục từ Backend Flask -> Trả về trực tiếp danh mục từ Backend!
+  if (input && input.length > 0) {
+    return Array.from(input);
+  }
+
+  // Nếu Backend chưa chạy -> Mới dùng mảng mẫu FANDOM_CATEGORIES
+  return [...FANDOM_CATEGORIES];
 }

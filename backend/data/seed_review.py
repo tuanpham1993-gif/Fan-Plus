@@ -38,7 +38,6 @@ def seed_reviews():
 
     for item in reviews:
 
-        # Find user
         user = User.query.filter_by(
             email=item["email"]
         ).first()
@@ -50,7 +49,6 @@ def seed_reviews():
             )
             continue
 
-        # Find content
         content = Content.query.filter_by(
             title=item["content_title"]
         ).first()
@@ -62,7 +60,6 @@ def seed_reviews():
             )
             continue
 
-        # Check if this user already reviewed this content
         existing_review = Review.query.filter_by(
             user_id=user.id,
             content_id=content.id

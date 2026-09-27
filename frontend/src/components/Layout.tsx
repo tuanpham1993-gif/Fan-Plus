@@ -18,6 +18,8 @@ export function Logo() {
 const nav = [
   ["/", "Discover"],
   ["/explore", "Explore"],
+  ["/characters", "Characters"],
+  ["/merchandise", "Merchandise"],
   ["/community", "Community"],
   ["/events", "Events"],
   ["/giveaways", "Quarterly gifts"],
@@ -115,10 +117,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             {navLinks}
           </nav>
           <div className="header-tools">
-            <button className="lore-header-button" onClick={() => openLore()}>
-              <Icon name="chat" size={17} />
-              <span>Ask Lore</span>
-            </button>
             <button
               className="search-trigger"
               onClick={() => setSearch(true)}
@@ -230,7 +228,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <div>
             <h2>Discover</h2>
             <Link to="/explore">All worlds</Link>
+            <Link to="/categories">Explore categories</Link>
             <Link to="/characters">Characters</Link>
+            <Link to="/merchandise">Merchandise</Link>
             <Link to="/media">Media room</Link>
             <Link to="/events">Events & calendar</Link>
             <Link to="/releases">Upcoming releases</Link>
@@ -280,7 +280,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <nav className="mobile-nav" aria-label="Mobile navigation">
           {navLinks}
           <Link to="/media">Media room</Link>
-          <Link to="/characters">Characters</Link>
+          <Link to="/categories">Explore categories</Link>
           <Link to="/collection">My collection</Link>
           <Link to="/profile">Profile & preferences</Link>
           <div className="mobile-reading">

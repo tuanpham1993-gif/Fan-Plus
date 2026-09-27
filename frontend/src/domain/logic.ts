@@ -139,7 +139,6 @@ export function calendarFile(event: FanEvent): string {
       .toISOString()
       .replace(/[-:]/g, "")
       .replace(/\.\d{3}/, "");
-  // Fold on UTF-8 byte boundaries as required by RFC 5545.
   const fold = (s: string) => {
     let out = "",
       line = "",

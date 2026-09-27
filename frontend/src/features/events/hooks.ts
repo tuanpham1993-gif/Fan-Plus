@@ -101,6 +101,20 @@ export function useEvents() {
     [items],
   );
 
+  const getEventById = useCallback(
+    async (eventId: string, signal?: AbortSignal) => {
+      if (serverMode) {
+        try {
+          return await eventApi.getById(eventId, signal);
+        } catch {
+          return null;
+        }
+      }
+      return items.find((e) => e.id === eventId) || null;
+    },
+    [items],
+  );
+
   return {
     status,
     events: items,
@@ -109,5 +123,6 @@ export function useEvents() {
     reload: load,
     join,
     isPending,
+    getEventById,
   };
 }

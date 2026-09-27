@@ -91,17 +91,6 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="lore-inline">
-        <span className="lore-monogram">L<span>m</span></span>
-        <div>
-          <span className="eyebrow">MEET YOUR READING COMPANION</span>
-          <strong>A character, a story, a question that stays.</strong>
-        </div>
-        <button onClick={() => openLore("Tóm tắt cơ chế Vô Hạ Hạn của Gojo?")}>
-          Ask Lore Master <Icon name="arrow" size={17} />
-        </button>
-      </section>
-
       <section className="world-section">
         <div className="section-heading">
           <div>

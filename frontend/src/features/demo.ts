@@ -1,4 +1,3 @@
-/** Browser simulator. All permissions here are UX checks, not a security boundary. */
 import { initialSocial, knowledge } from "./seed";
 import type {
   Author,
@@ -138,8 +137,6 @@ const MEDIA_EXTENSIONS: Record<string, string[]> = {
   video: [".webm", ".mp4", ".mov"],
   soundtrack: [".wav", ".mp3", ".ogg"],
 };
-// Mirrors backend/fanhub/core.py's keyword-based heuristic; no pixel-level image
-// analysis is available in this kit, so explicit/NSFW text is blocked instead.
 const SENSITIVE_KEYWORDS = [
   "porn", "pornographic", "xxx", "nsfw", "nude", "nudity", "naked", "sex tape",
   "explicit content", "hentai uncensored", "fetish", "onlyfans", "gore", "rape",
@@ -149,8 +146,6 @@ const SENSITIVE_PATTERN = new RegExp(
   "\\b(" + SENSITIVE_KEYWORDS.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|") + ")\\b",
 );
 function containsSensitive(...parts: string[]) {
-  // Word-boundary match: a plain substring check would also flag innocuous words
-  // like "grape" or "therapeutic" for containing "rape".
   const blob = normalize(parts.filter(Boolean).join(" "));
   return SENSITIVE_PATTERN.test(blob);
 }

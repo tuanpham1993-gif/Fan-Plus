@@ -10,10 +10,8 @@ ALLOWED_TAGS = {
     "Collectible"
 }
 
+_UNSET = object()
 
-# =========================================================
-# GET ONE MERCHANDISE
-# =========================================================
 
 def get_merchandise(item_id, increment_view=False):
 
@@ -31,40 +29,33 @@ def get_merchandise(item_id, increment_view=False):
     return item
 
 
-# =========================================================
-# GET MERCHANDISE LIST
-# =========================================================
-
 def get_merchandise_list(
     category_id=None,
     character_id=None,
     tag=None,
     is_upcoming=None,
+    search=None,                 
     page=1,
     limit=10
 ):
 
     query = MerchandiseItem.query
 
-    # Filter category
     if category_id is not None:
         query = query.filter(
             MerchandiseItem.category_id == category_id
         )
 
-    # Filter character
     if character_id is not None:
         query = query.filter(
             MerchandiseItem.character_id == character_id
         )
 
-    # Filter tag
     if tag:
         query = query.filter(
             MerchandiseItem.tag == tag
         )
 
-    # Filter upcoming
     if is_upcoming is not None:
 
         if isinstance(is_upcoming, str):
@@ -77,6 +68,17 @@ def get_merchandise_list(
         query = query.filter(
             MerchandiseItem.is_upcoming == is_upcoming
         )
+
+    if search is not None:
+
+        search = search.strip().lower()
+
+        if search:
+            query = query.filter(
+                db.func.lower(
+                    MerchandiseItem.name
+                ).like(f"%{search}%")
+            )
 
     pagination = (
         query
@@ -97,10 +99,6 @@ def get_merchandise_list(
     )
 
 
-# =========================================================
-# CREATE MERCHANDISE
-# =========================================================
-
 def create_merchandise(
     name,
     image_url=None,
@@ -110,7 +108,6 @@ def create_merchandise(
     is_upcoming=False
 ):
 
-    # Check category
     category = db.session.get(
         Category,
         category_id
@@ -119,7 +116,6 @@ def create_merchandise(
     if category is None:
         return None, "Category not found.", 404
 
-    # Check character
     if character_id is not None:
 
         character = db.session.get(
@@ -130,8 +126,6 @@ def create_merchandise(
         if character is None:
             return None, "Character not found.", 404
 
-        # Character and merchandise
-        # must belong to the same category
         if character.category_id != category_id:
             return (
                 None,
@@ -139,7 +133,6 @@ def create_merchandise(
                 400
             )
 
-    # Validate tag
     if tag and str(tag).strip():
 
         tag = str(tag).strip()
@@ -155,7 +148,6 @@ def create_merchandise(
     else:
         tag = None
 
-    # Convert is_upcoming
     if isinstance(is_upcoming, str):
         is_upcoming = (
             is_upcoming.lower() == "true"
@@ -163,7 +155,6 @@ def create_merchandise(
     else:
         is_upcoming = bool(is_upcoming)
 
-    # Validate name
     name = str(name or "").strip()
 
     if not name:
@@ -173,7 +164,6 @@ def create_merchandise(
             400
         )
 
-    # Create item
     item = MerchandiseItem(
         name=name,
         category_id=category_id,
@@ -191,17 +181,13 @@ def create_merchandise(
     return item, None, 201
 
 
-# =========================================================
-# UPDATE MERCHANDISE
-# =========================================================
-
 def update_merchandise(
     item_id,
     name=None,
     image_url=None,
     category_id=None,
-    character_id=None,
-    tag=None,
+    character_id=_UNSET,
+    tag=_UNSET,
     is_upcoming=None
 ):
 
@@ -209,10 +195,6 @@ def update_merchandise(
 
     if item is None:
         return None, "Merchandise not found.", 404
-
-    # -----------------------------------------
-    # Category
-    # -----------------------------------------
 
     target_category_id = (
         category_id
@@ -228,14 +210,10 @@ def update_merchandise(
     if category is None:
         return None, "Category not found.", 404
 
-    # -----------------------------------------
-    # Character
-    # -----------------------------------------
-
     target_character_id = (
-        character_id
-        if character_id is not None
-        else item.character_id
+        item.character_id
+        if character_id is _UNSET
+        else character_id
     )
 
     if target_character_id is not None:
@@ -255,10 +233,6 @@ def update_merchandise(
                 400
             )
 
-    # -----------------------------------------
-    # Name
-    # -----------------------------------------
-
     if name is not None:
 
         name = str(name).strip()
@@ -272,20 +246,12 @@ def update_merchandise(
 
         item.name = name
 
-    # -----------------------------------------
-    # Image
-    # -----------------------------------------
-
     if image_url is not None:
         item.image_url = image_url
 
-    # -----------------------------------------
-    # Tag
-    # -----------------------------------------
+    if tag is not _UNSET:
 
-    if tag is not None:
-
-        tag = str(tag).strip()
+        tag = str(tag or "").strip()
 
         if tag:
 
@@ -302,10 +268,6 @@ def update_merchandise(
         else:
             item.tag = None
 
-    # -----------------------------------------
-    # Is upcoming
-    # -----------------------------------------
-
     if is_upcoming is not None:
 
         if isinstance(is_upcoming, str):
@@ -315,10 +277,6 @@ def update_merchandise(
         else:
             item.is_upcoming = bool(is_upcoming)
 
-    # -----------------------------------------
-    # Category & Character
-    # -----------------------------------------
-
     item.category_id = target_category_id
     item.character_id = target_character_id
 
@@ -327,10 +285,6 @@ def update_merchandise(
 
     return item, None, 200
 
-
-# =========================================================
-# DELETE MERCHANDISE
-# =========================================================
 
 def delete_merchandise(item_id):
 

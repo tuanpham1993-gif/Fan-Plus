@@ -22,7 +22,6 @@ export const giveawayApi = {
       { signal },
     ),
 
-  // Current Flask source exposes /entries (plural), not /enter.
   enter: (campaignId: string, agree: boolean) =>
     apiClient.post<GiveawayEntryResponse>(
       `/giveaways/${encodeURIComponent(campaignId)}/entries`,

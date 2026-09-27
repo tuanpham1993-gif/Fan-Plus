@@ -1,5 +1,3 @@
-# crud/chatMessage.py
-
 from extensions import db
 from models.chatbotModels.chathistory import ChatMessage
 

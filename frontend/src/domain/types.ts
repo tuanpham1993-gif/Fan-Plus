@@ -32,6 +32,29 @@ export interface Content {
   sourceLabel: string;
   releaseDate?: string;
 }
+export interface BackendEvent {
+  id: number;
+  content_id: number;
+  location_name: string;
+  city: string;
+  latitude: number | string;
+  longitude: number | string;
+  start_time: string;
+  end_time?: string | null;
+  register_url?: string | null;
+  created_at?: string;
+  updated_at?: string;
+  content?: {
+    id: number;
+    title: string;
+    body: string;
+    category_id: number;
+    author_id: number;
+    content_type: string;
+    status: string;
+  };
+}
+
 export interface FanEvent {
   id: string;
   title: string;

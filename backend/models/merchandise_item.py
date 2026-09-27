@@ -14,15 +14,3 @@ class MerchandiseItem(db.Model):
     view_count = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    # def to_dict(self):
-    #     return {
-    #         'item_id': self.item_id,
-    #         'category_id': self.category_id,
-    #         'character_id': self.character_id,
-    #         'name': self.name,
-    #         'image_url': self.image_url,
-    #         'tag': self.tag,
-    #         'is_upcoming': self.is_upcoming,
-    #         'view_count': self.view_count,
-    #         'created_at': self.created_at.isoformat() if self.created_at else None
-    #     }

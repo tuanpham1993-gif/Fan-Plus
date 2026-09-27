@@ -1,10 +1,6 @@
--- Fan Hub Plus Database Schema for MySQL
--- Created: 2026-09-24
-
 CREATE DATABASE IF NOT EXISTS `fan_hub_plus` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE `fan_hub_plus`;
 
--- 1. Roles Table
 DROP TABLE IF EXISTS `bookmarks`;
 DROP TABLE IF EXISTS `contents`;
 DROP TABLE IF EXISTS `feedback`;
@@ -21,7 +17,6 @@ CREATE TABLE `roles` (
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 2. Users Table
 CREATE TABLE `users` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `username` VARCHAR(80) NOT NULL UNIQUE,
@@ -38,7 +33,6 @@ CREATE TABLE `users` (
   INDEX `idx_users_username` (`username`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 3. Categories Table
 CREATE TABLE `categories` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `name` VARCHAR(100) NOT NULL UNIQUE,
@@ -50,7 +44,6 @@ CREATE TABLE `categories` (
   INDEX `idx_categories_slug` (`slug`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 4. Characters Table (Should-Have Feature)
 CREATE TABLE `characters` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `name` VARCHAR(120) NOT NULL,
@@ -63,7 +56,6 @@ CREATE TABLE `characters` (
   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 5. Contents Table
 CREATE TABLE `contents` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `title` VARCHAR(255) NOT NULL,
@@ -88,7 +80,6 @@ CREATE TABLE `contents` (
   INDEX `idx_contents_created` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 6. Bookmarks Table
 CREATE TABLE `bookmarks` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `user_id` INT NOT NULL,
@@ -101,7 +92,6 @@ CREATE TABLE `bookmarks` (
   INDEX `idx_bookmarks_content` (`content_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 7. Feedback Table (Should-Have Feature)
 CREATE TABLE `feedback` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `user_id` INT NULL,
@@ -114,7 +104,6 @@ CREATE TABLE `feedback` (
   FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 8. Merchandise Table (Should-Have Feature)
 CREATE TABLE `merchandise` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `name` VARCHAR(200) NOT NULL,
@@ -127,7 +116,6 @@ CREATE TABLE `merchandise` (
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 9. Events Table (Should-Have Feature)
 CREATE TABLE `events` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `title` VARCHAR(200) NOT NULL,

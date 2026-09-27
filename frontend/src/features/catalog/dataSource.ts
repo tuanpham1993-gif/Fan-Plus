@@ -160,8 +160,6 @@ export const catalogDataSource = {
       };
     }
 
-    // Demo compatibility path only. repository.rate persists the demo record;
-    // connected mode never uses this browser-backed rating source of truth.
     requireDemoDb(db);
     const nextDb = await repository.rate(contentId, value);
     return {
@@ -171,8 +169,6 @@ export const catalogDataSource = {
   },
 
   async recordView(contentId: string) {
-    // Activity is still a later refactor chunk. Preserve the existing demo
-    // behavior without inventing a connected-mode endpoint here.
     if (serverMode) return null;
     return repository.recordView(contentId);
   },

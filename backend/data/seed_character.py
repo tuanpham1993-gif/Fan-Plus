@@ -38,7 +38,6 @@ def seed_characters():
 
     for item in characters:
 
-        # Find category by name
         category = Category.query.filter_by(
             name=item["category"]
         ).first()
@@ -50,7 +49,6 @@ def seed_characters():
             )
             continue
 
-        # Check whether character already exists
         existing_character = Character.query.filter_by(
             name=item["name"],
             category_id=category.category_id

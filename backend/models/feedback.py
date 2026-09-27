@@ -6,9 +6,9 @@ class Feedback(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
-    type = db.Column(db.String(50), nullable=False) # bug, suggestion, query
+    type = db.Column(db.String(50), nullable=False) 
     content = db.Column(db.Text, nullable=False)
-    status = db.Column(db.String(50), nullable=False, default='pending') # pending, resolved, dismissed
+    status = db.Column(db.String(50), nullable=False, default='pending') 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

@@ -44,19 +44,16 @@ class Character(db.Model):
         onupdate=lambda: datetime.now(timezone.utc)
     )
 
-    # Character thuộc Category
     category = db.relationship(
         "Category",
         back_populates="characters"
     )
 
-    # Character <-> CharacterContent
     character_contents = db.relationship(
         "CharacterContent",
         back_populates="character"
     )
 
-    # Character <-> Merchandise
     merchandise_items = db.relationship(
         "MerchandiseItem",
         backref="character"

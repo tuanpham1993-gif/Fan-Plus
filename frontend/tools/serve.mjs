@@ -1,4 +1,3 @@
-/** Dependency-free local preview server, with SPA fallback and byte-range media support. */
 import http from 'node:http';
 import { promises as fs,createReadStream } from 'node:fs';
 import path from 'node:path';

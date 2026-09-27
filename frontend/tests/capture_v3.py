@@ -24,7 +24,6 @@ with sync_playwright() as p:
  page.set_viewport_size({'width':1440,'height':1000});page.evaluate("window.__ui.go('/assistant')");page.wait_for_timeout(400)
  page.screenshot(path=str(OUT/'lore-desktop.png'),full_page=True)
  page.evaluate("window.__ui.go('/community')");page.wait_for_timeout(200)
- # Change through the actual interface, not by falsifying a screenshot.
  toggle=page.get_by_role('button',name='Switch to light theme',exact=True)
  toggle.click();expect(page.locator('html')).to_have_attribute('data-theme','light')
  page.wait_for_timeout(150);page.screenshot(path=str(OUT/'community-light.png'),full_page=True)

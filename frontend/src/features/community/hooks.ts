@@ -149,7 +149,6 @@ export function useReaction({
       const previous = mine || null;
       const next: ReactionKind = previous === kind ? null : kind;
 
-      // Optimistic update is scoped to this post + current user only.
       updateData((current) => ({
         ...current,
         reactions: setUserReaction(current.reactions, postId, user.id, next),
@@ -159,7 +158,6 @@ export function useReaction({
       try {
         await communityDataSource.setReaction(user, postId, next);
       } catch (cause) {
-        // Roll back only this post/user reaction so unrelated feed updates survive.
         updateData((current) => ({
           ...current,
           reactions: setUserReaction(

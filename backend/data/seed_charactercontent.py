@@ -46,7 +46,6 @@ def seed_character_contents():
             )
             continue
 
-        # Prevent duplicate relationship
         existing_relation = CharacterContent.query.filter_by(
             content_id=content.id,
             character_id=character.character_id

@@ -30,7 +30,6 @@ def seed_events():
 
     for item in events:
 
-        # Find the Content that represents this event
         content = Content.query.filter_by(
             title=item["content_title"]
         ).first()
@@ -42,7 +41,6 @@ def seed_events():
             )
             continue
 
-        # Make sure this content is actually an EVENT
         if content.content_type != "EVENT":
             print(
                 f"Content '{item['content_title']}' is not "
@@ -50,7 +48,6 @@ def seed_events():
             )
             continue
 
-        # Because Event.content_id is unique
         existing_event = Event.query.filter_by(
             content_id=content.id
         ).first()

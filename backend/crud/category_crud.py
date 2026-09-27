@@ -5,19 +5,13 @@ from models.character import Character
 from models.merchandise_item import MerchandiseItem
 
 
-# =========================================================
-# GET ALL CATEGORIES
-# GET /categories
-# Có hỗ trợ tìm/lọc theo tên
-# =========================================================
+
 
 def get_all_categories(search=None):
 
     query = Category.query
 
-    # --------------------------------
-    # Filter by category name
-    # --------------------------------
+    
 
     if search is not None and str(search).strip():
 
@@ -27,41 +21,20 @@ def get_all_categories(search=None):
             Category.name.ilike(search_term)
         )
 
-    # --------------------------------
-    # Order by name
-    # --------------------------------
+   
 
     return query.order_by(
         Category.name.asc()
     ).all()
 
 
-# =========================================================
-# GET ONE CATEGORY
-# GET /categories/<category_id>
-# =========================================================
-
-def get_category(category_id):
-
-    return db.session.get(
-        Category,
-        category_id
-    )
-
-
-# =========================================================
-# CREATE CATEGORY
-# POST /categories
-# =========================================================
 
 def create_category(
     name,
     description=None
 ):
 
-    # --------------------------------
-    # Validate name
-    # --------------------------------
+
 
     name = str(name or "").strip()
 
@@ -69,9 +42,7 @@ def create_category(
 
         return None, "Category name is required.", 400
 
-    # --------------------------------
-    # Check duplicate name
-    # --------------------------------
+ 
 
     existing = Category.query.filter(
         Category.name.ilike(name)
@@ -81,9 +52,7 @@ def create_category(
 
         return None, "Category name already exists.", 409
 
-    # --------------------------------
-    # Create category
-    # --------------------------------
+
 
     category = Category(
         name=name,
@@ -97,19 +66,12 @@ def create_category(
     return category, None, 201
 
 
-# =========================================================
-# UPDATE CATEGORY
-# PUT /categories/<category_id>
-# =========================================================
+
 
 def update_category(
     category_id,
     data
 ):
-
-    # --------------------------------
-    # Get category
-    # --------------------------------
 
     category = db.session.get(
         Category,
@@ -120,9 +82,6 @@ def update_category(
 
         return None, "Category not found.", 404
 
-    # --------------------------------
-    # Update name
-    # --------------------------------
 
     if "name" in data:
 
@@ -134,9 +93,7 @@ def update_category(
 
             return None, "Category name cannot be empty.", 400
 
-        # --------------------------------
-        # Check duplicate name
-        # --------------------------------
+   
 
         duplicate = Category.query.filter(
             Category.name.ilike(name),
@@ -149,17 +106,12 @@ def update_category(
 
         category.name = name
 
-    # --------------------------------
-    # Update description
-    # --------------------------------
+
 
     if "description" in data:
 
         category.description = data["description"]
 
-    # --------------------------------
-    # Save changes
-    # --------------------------------
 
     db.session.commit()
     db.session.refresh(category)
@@ -167,16 +119,9 @@ def update_category(
     return category, None, 200
 
 
-# =========================================================
-# DELETE CATEGORY
-# DELETE /categories/<category_id>
-# =========================================================
+
 
 def delete_category(category_id):
-
-    # --------------------------------
-    # Get category
-    # --------------------------------
 
     category = db.session.get(
         Category,
@@ -187,25 +132,13 @@ def delete_category(category_id):
 
         return None, "Category not found.", 404
 
-    # --------------------------------
-    # Check characters
-    # --------------------------------
-
     has_character = Character.query.filter_by(
         category_id=category_id
     ).first()
 
-    # --------------------------------
-    # Check merchandise
-    # --------------------------------
-
     has_merchandise = MerchandiseItem.query.filter_by(
         category_id=category_id
     ).first()
-
-    # --------------------------------
-    # Cannot delete if category is in use
-    # --------------------------------
 
     if has_character or has_merchandise:
 
@@ -214,10 +147,6 @@ def delete_category(category_id):
             "Cannot delete category that is currently assigned to characters or merchandise.",
             409
         )
-
-    # --------------------------------
-    # Delete category
-    # --------------------------------
 
     db.session.delete(category)
     db.session.commit()
