@@ -18,7 +18,7 @@ from crud.content import create_content
 from crud.mediaContent import create_media, get_medias
 from services.media import save_file
 
-event_bp = Blueprint("event", __name__, url_prefix="/api/events")
+event_bp = Blueprint("event", __name__, url_prefix="/events")
 
 @event_bp.get("/<int:event_id>")
 def get_event_api(event_id):
