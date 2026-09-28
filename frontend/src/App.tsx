@@ -5,7 +5,6 @@ import { navigate, useLocation } from "./lib/router";
 import Layout from "./components/Layout";
 import { Gate, Skeleton, Empty, Button } from "./components/ui";
 const Community = React.lazy(() => import("./features/Community"));
-const Giveaways = React.lazy(() => import("./features/Giveaways"));
 const Knowledge = React.lazy(() =>
   import("./features/Lore").then((m) => ({ default: m.KnowledgePage })),
 );
@@ -104,7 +103,6 @@ export default function App() {
       "/collection": "Your collection",
       "/admin": "Editorial workspace",
       "/community": "Community",
-      "/giveaways": "Quarterly gifts",
       "/assistant": "Lore Master",
     };
     document.title =
@@ -221,8 +219,6 @@ export default function App() {
         id={decodeURIComponent(pathname.slice(19))}
       />
     );
-  else if (pathname === "/giveaways")
-    page = <Giveaways key={user?.id || "visitor"} />;
   else if (pathname.startsWith("/knowledge/"))
     page = (
       <Knowledge key={pathname} id={decodeURIComponent(pathname.slice(11))} />

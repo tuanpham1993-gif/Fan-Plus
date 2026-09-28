@@ -326,19 +326,6 @@ function CommunityRail({
         </small>
       </div>
 
-      <Link to="/giveaways" className="rail-gift">
-        <div>
-          <Icon name="ticket" size={23} />
-          <span className="eyebrow">QUARTERLY GIFTS / DEMO</span>
-        </div>
-        <h3>Beyond the screen.</h3>
-        <p>One free entry. A few possibilities.</p>
-        <span className="text-link">
-          Explore this quarter
-          <Icon name="arrow" size={16} />
-        </span>
-      </Link>
-
       <p className="rail-runtime">
         {serverMode
           ? bookmarkBackendSupported

@@ -14,7 +14,6 @@ const groups = [
       ["/releases", "Release calendar"],
       ["/events", "Events, calendar and map"],
       ["/community", "Community conversations"],
-      ["/giveaways", "Quarterly gifts"],
     ],
   },
   {

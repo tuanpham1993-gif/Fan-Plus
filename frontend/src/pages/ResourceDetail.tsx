@@ -76,7 +76,20 @@ export default function ResourceDetail({
         { label: isCharacter ? characterItem.name : merchandiseItem.name },
       ]} />
       <div className="resource-detail">
-        <div className="resource-detail-art">
+        <div
+          className="resource-detail-art"
+          onMouseMove={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const x = ((e.clientX - rect.left) / rect.width) * 100;
+            const y = ((e.clientY - rect.top) / rect.height) * 100;
+            e.currentTarget.style.setProperty("--zoom-x", `${x}%`);
+            e.currentTarget.style.setProperty("--zoom-y", `${y}%`);
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.removeProperty("--zoom-x");
+            e.currentTarget.style.removeProperty("--zoom-y");
+          }}
+        >
           <img src={imageSource(item.image_url)} alt={item.name} onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = "/art/community.svg"; }} />
         </div>
         <article className="panel resource-detail-content">

@@ -51,7 +51,7 @@ export default function Characters() {
   const [image, setImage] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState("");
-  const canManage = Boolean(user);
+  const canManage = user?.role === "admin";
 
   useEffect(() => setSearchInput(query.search), [query.search]);
 

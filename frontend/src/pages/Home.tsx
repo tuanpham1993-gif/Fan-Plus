@@ -237,14 +237,13 @@ export default function Home() {
       </section>
 
       <section className="bottom-duo">
-        <Link to="/giveaways" className="duo-card">
-          <span className="duo-icon"><Icon name="ticket" size={26} /></span>
+        <Link to="/explore" className="duo-card">
+          <span className="duo-icon"><Icon name="compass" size={26} /></span>
           <div>
-            <span className="eyebrow">MEMBER APPRECIATION / DEMO</span>
+            <span className="eyebrow">EXPLORE WORLDS</span>
             <h3>Your next story, beyond the screen.</h3>
             <p>
-              Explore the quarterly gifts concept. One free entry per account,
-              no purchase and no real prizes in this demo.
+              Discover stories, characters and official merchandise across all fandom universes.
             </p>
           </div>
           <Icon name="arrow" size={23} />

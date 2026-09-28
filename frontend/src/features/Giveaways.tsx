@@ -1,28 +1,7 @@
-import React, { useEffect, useState } from "react";
-import { useApp } from "../lib/store";
-import { useAuth } from "./auth/AuthProvider";
-import { Link, navigate } from "../lib/router";
-import { Icon, Button, Modal, Empty, Notice } from "../components/ui";
-import { useGiveaways } from "./giveaways/hooks";
-import { serverMode } from "../shared/http/client";
-import { verifyCampaignRecord } from "./demo";
-import type { Campaign, Prize } from "./types";
-const format = (s: string) =>
-  new Intl.DateTimeFormat("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Asia/Ho_Chi_Minh",
-  }).format(new Date(s));
-function Countdown({ end }: { end: string }) {
-  const [now, setNow] = useState(Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 30000);
-    return () => clearInterval(id);
-  }, []);
-  const diff = Math.max(0, Date.parse(end) - now),
+export default function Giveaways() {
+  return null;
+}
+/*
     d = Math.floor(diff / 86400000),
     h = Math.floor(diff / 3600000) % 24,
     m = Math.floor(diff / 60000) % 60;
@@ -718,3 +697,4 @@ export default function Giveaways() {
     </>
   );
 }
+*/

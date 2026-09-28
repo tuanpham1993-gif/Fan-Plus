@@ -22,7 +22,6 @@ const nav = [
   ["/merchandise", "Merchandise"],
   ["/community", "Community"],
   ["/events", "Events"],
-  ["/giveaways", "Quarterly gifts"],
 ];
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
@@ -251,7 +250,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <div>
             <h2>Fan Hub Plus</h2>
             <Link to="/assistant">Lore Master</Link>
-            <Link to="/giveaways">Quarterly gifts</Link>
             <Link to="/showcase">Collectible showcase</Link>
             <Link to="/sitemap">Sitemap</Link>
             <Link to="/privacy">Privacy & demo notes</Link>
