@@ -294,13 +294,20 @@ function EventList() {
   );
 
   const events = useMemo(() => {
+    const now = new Date();
+
     const items = sourceEvents
+      .filter((event) => {
+        const endTime = new Date(event.endsAt || event.startsAt);
+
+        return endTime >= now;
+      })
       .map((event) => ({
         ...event,
         distance: geo ? distanceKm(geo, event) : null,
       }))
       .filter((event) => !geo || !radius || event.distance! <= radius);
-    // The server already applied the chosen sort; distance only reorders once shared.
+
     return geo ? items.sort((a, b) => a.distance! - b.distance!) : items;
   }, [sourceEvents, geo, radius]);
 
