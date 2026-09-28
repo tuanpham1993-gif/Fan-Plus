@@ -118,7 +118,7 @@ def event_json(e):
 
 
 def user_json(u):
-    data = u.to_dict()
+    data = u.to_admin_dict()
     data["id"] = str(u.id)
     return data
 

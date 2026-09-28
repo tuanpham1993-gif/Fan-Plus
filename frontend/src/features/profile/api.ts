@@ -7,6 +7,16 @@ export interface ProfileServerPatch {
   avatar?: string | null;
   favorite_fandoms?: string[];
   display_preferences?: Record<string, unknown>;
+  phone?: string | null;
+  birthday?: string | null;
+  gender?: string | null;
+  city?: string | null;
+  bio?: string | null;
+}
+
+export interface PasswordChangeRequest {
+  current_password: string;
+  new_password: string;
 }
 
 export const profileApi = {
@@ -17,6 +27,25 @@ export const profileApi = {
     apiClient.put<{ message?: string; user: User }>("/users/me", patch, {
       signal,
     }),
+
+  async updatePersonalInfo(
+    patch: Pick<
+      ProfileServerPatch,
+      "phone" | "birthday" | "gender" | "city" | "bio"
+    >,
+  ): Promise<User> {
+    const response = await apiClient.put<{ message?: string; user: User }>(
+      "/users/me",
+      patch,
+    );
+    return response.user;
+  },
+
+  changePassword: (input: PasswordChangeRequest) =>
+    apiClient.put<{ message?: string; user: User }>(
+      "/users/me/password",
+      input,
+    ),
 
   async uploadAvatar(file: File): Promise<User> {
     const form = new FormData();

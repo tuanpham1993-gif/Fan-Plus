@@ -8,6 +8,8 @@ import { useHomeCatalog } from "../features/catalog/hooks";
 import { FANDOM_CATEGORIES, categoryLabel } from "../shared/catalog/taxonomy";
 import { resolveAvatarUrl, serverMode } from "../shared/http/client";
 import { profileApi } from "../features/profile/api";
+import PersonalInfoCard from "../features/profile/PersonalInfoCard";
+import ChangePasswordCard from "../features/profile/ChangePasswordCard";
 import { Link, navigate, currentPath } from "../lib/router";
 import { repository } from "../services/repository";
 import type { Feedback } from "../domain/types";
@@ -447,7 +449,7 @@ function Profile() {
       navigate("/");
     } catch (cause) {
       notify(
-        cause instanceof Error ? cause.message : "Sign out failed.",
+        cause instanceof Error ? cause.message : "Đăng xuất không thành công.",
         "error",
       );
     }
@@ -457,9 +459,9 @@ function Profile() {
     return (
       <>
         <PageHeading
-          eyebrow="MAKE THIS SPACE YOURS"
-          title="Your profile."
-          description="Loading your account settings."
+          eyebrow="KHÔNG GIAN CỦA BẠN"
+          title="Hồ sơ của bạn."
+          description="Đang tải cài đặt tài khoản."
         />
         <AccountNav />
         {profileError ? (
@@ -474,12 +476,12 @@ function Profile() {
   return (
     <>
       <PageHeading
-        eyebrow="MAKE THIS SPACE YOURS"
-        title="Your profile."
+        eyebrow="KHÔNG GIAN CỦA BẠN"
+        title="Hồ sơ của bạn."
         description={
           serverMode
-            ? "Your profile is loaded from the authenticated Flask session. Appearance preferences stay on this device."
-            : "Your interests shape your discoveries. This demo profile is stored only in this browser."
+            ? "Hồ sơ được tải từ tài khoản của bạn. Tùy chọn giao diện chỉ lưu trên thiết bị này."
+            : "Sở thích giúp gợi ý nội dung phù hợp. Hồ sơ demo chỉ được lưu trong trình duyệt này."
         }
       />
       <AccountNav />
@@ -501,33 +503,31 @@ function Profile() {
               });
               if (result.unsupportedFields.length) {
                 notify(
-                  `Profile saved, but the current backend does not yet persist: ${result.unsupportedFields.join(
+                  `Hồ sơ đã lưu, nhưng máy chủ chưa hỗ trợ: ${result.unsupportedFields.join(
                     ", ",
-                  )}. See BACKEND_HANDOFF.md.`,
+                  )}.`,
                   "info",
                 );
               } else {
-                notify("Your profile has been updated.");
+                notify("Hồ sơ của bạn đã được cập nhật.");
               }
             } catch (cause) {
               notify(
                 cause instanceof Error
                   ? cause.message
-                  : "Your profile could not be updated.",
+                  : "Không thể cập nhật hồ sơ.",
                 "error",
               );
             }
           }}
         >
           {profileError && <Notice kind="error">{profileError}</Notice>}
-          {profileLoading && <p className="muted">Refreshing profile...</p>}
+          {profileLoading && <p className="muted">Đang cập nhật hồ sơ...</p>}
 
           {serverMode && (
             <Notice>
-              The current Flask profile contract persists the authenticated user
-              record, including favorite fandoms and display preferences. The UI
-              stays aligned to the server contract and does not invent legacy
-              demo-only fields.
+              Thông tin hồ sơ và tùy chọn hiển thị được lưu trong tài khoản của
+              bạn.
             </Notice>
           )}
 
@@ -547,7 +547,7 @@ function Profile() {
               <h2>{user.name}</h2>
               <p className="muted">{user.email}</p>
               <label className="upload-label">
-                Change avatar
+                Đổi ảnh đại diện
                 <input
                   type="file"
                   accept="image/png,image/jpeg,image/webp"
@@ -571,13 +571,13 @@ function Profile() {
                   disabled={avatarBusy}
                   onClick={() => setRemoveAvatarOpen(true)}
                 >
-                  Remove avatar
+                  Xóa ảnh đại diện
                 </button>
               )}
             </div>
           </div>
 
-          <Field label="Display name">
+          <Field label="Tên hiển thị">
             <input
               required
               maxLength={60}
@@ -587,7 +587,7 @@ function Profile() {
           </Field>
 
           <fieldset>
-            <legend>Favorite categories</legend>
+            <legend>Danh mục yêu thích</legend>
             <div className="preference-grid">
               {FANDOM_CATEGORIES.map((category) => (
                 <label
@@ -617,8 +617,8 @@ function Profile() {
           </fieldset>
 
           <Field
-            label="Favorite fandoms"
-            hint="Separate fandom names with commas. The backend accepts up to 20 names, each up to 80 characters."
+            label="Fandom yêu thích"
+            hint="Phân tách tên fandom bằng dấu phẩy. Tối đa 20 tên, mỗi tên không quá 80 ký tự."
           >
             <input
               value={fandoms}
@@ -628,23 +628,20 @@ function Profile() {
           </Field>
 
           <Button type="submit" busy={saving}>
-            Save profile <Icon name="check" size={17} />
+            Lưu hồ sơ <Icon name="check" size={17} />
           </Button>
         </form>
 
         <aside className="stack">
           <section className="panel">
-            <h2>Your reading list</h2>
+            <h2>Danh sách đọc của bạn</h2>
             {bookmarkStatus === "loading" ? (
               <Skeleton cards={1} />
             ) : bookmarkError ? (
               <Notice kind="error">{bookmarkError}</Notice>
             ) : (
               <>
-                <p className="muted">
-                  {bookmarkCount} saved{" "}
-                  {bookmarkCount === 1 ? "discovery" : "discoveries"}.
-                </p>
+                <p className="muted">{bookmarkCount} mục đã lưu.</p>
                 <div className="stack">
                   {bookmarkItems.slice(0, 3).map((item) => (
                     <Link
@@ -662,29 +659,29 @@ function Profile() {
                   ))}
                 </div>
                 <Link className="text-link" to="/collection">
-                  Open your collection <Icon name="arrow" size={15} />
+                  Mở bộ sưu tập <Icon name="arrow" size={15} />
                 </Link>
               </>
             )}
           </section>
 
           <section className="panel">
-            <h2>Reading preferences</h2>
+            <h2>Tùy chọn đọc</h2>
             <div className="setting-row">
-              <span>Appearance</span>
+              <span>Giao diện</span>
               <Button variant="secondary" onClick={toggleTheme}>
                 <Icon name={theme === "dark" ? "moon" : "sun"} size={16} />
-                {theme === "dark" ? "Dark" : "Light"}
+                {theme === "dark" ? "Tối" : "Sáng"}
               </Button>
             </div>
-            <Field label="Text size">
+            <Field label="Cỡ chữ">
               <select
                 value={fontScale}
                 onChange={(event) => setFontScale(Number(event.target.value))}
               >
-                <option value={1}>Standard - 100%</option>
-                <option value={1.125}>Comfortable - 112.5%</option>
-                <option value={1.25}>Large - 125%</option>
+                <option value={1}>Tiêu chuẩn - 100%</option>
+                <option value={1.125}>Dễ đọc - 112,5%</option>
+                <option value={1.25}>Lớn - 125%</option>
               </select>
             </Field>
             <label className="check-row">
@@ -693,35 +690,45 @@ function Profile() {
                 checked={spoilerSafe}
                 onChange={toggleSpoilers}
               />
-              Hide flagged story bodies until I reveal them
+              Ẩn nội dung có cảnh báo tiết lộ cho đến khi tôi mở
             </label>
             <p className="muted small">
-              This is a reading convenience. It does not remove spoiler data
-              from the browser.
+              Tùy chọn này chỉ hỗ trợ đọc và không xóa dữ liệu tiết lộ khỏi
+              trình duyệt.
             </p>
           </section>
 
-          <section className="panel">
-            <h2>{serverMode ? "Account session" : "Demo workspace"}</h2>
-            <Notice>
-              {serverMode
-                ? "Authentication and supported profile fields are server-owned. Frontend route guards remain UX only."
-                : "This demo account and its business data exist only in local browser storage."}
-            </Notice>
-            <div className="stack">
-              <Link to="/forgot-password" className="text-link">
-                Try password reset <Icon name="arrow" size={15} />
-              </Link>
-              <Button variant="secondary" onClick={() => void signOut()}>
-                Sign out <Icon name="logout" size={16} />
-              </Button>
-              {!serverMode && (
-                <Button variant="danger" onClick={() => setReset(true)}>
-                  Reset all demo data
+          {serverMode ? (
+            <>
+              <PersonalInfoCard user={user} onSaved={adoptProfile} />
+              <ChangePasswordCard user={user} />
+              <section className="panel account-signout">
+                <Button variant="secondary" onClick={() => void signOut()}>
+                  Đăng xuất <Icon name="logout" size={16} />
                 </Button>
-              )}
-            </div>
-          </section>
+              </section>
+            </>
+          ) : (
+            <section className="panel">
+              <h2>Không gian demo</h2>
+              <Notice>
+                Tài khoản demo và dữ liệu chỉ được lưu trong trình duyệt này.
+              </Notice>
+              <div className="stack">
+                <Link to="/forgot-password" className="text-link">
+                  Quên mật khẩu? <Icon name="arrow" size={15} />
+                </Link>
+                <Button variant="secondary" onClick={() => void signOut()}>
+                  Đăng xuất <Icon name="logout" size={16} />
+                </Button>
+                {!serverMode && (
+                  <Button variant="danger" onClick={() => setReset(true)}>
+                    Xóa toàn bộ dữ liệu demo
+                  </Button>
+                )}
+              </div>
+            </section>
+          )}
         </aside>
       </div>
 
@@ -729,11 +736,11 @@ function Profile() {
         <Confirm
           open={reset}
           onClose={() => setReset(false)}
-          title="Reset this demo workspace?"
-          description="This removes all local profiles, notes, ratings, submissions, edits and chat history from Fan Hub Plus. Your appearance preference stays. Other websites are not affected."
+          title="Xóa không gian demo?"
+          description="Thao tác này xóa hồ sơ, ghi chú, đánh giá, bài gửi, nội dung chỉnh sửa và lịch sử trò chuyện khỏi Fan Hub Plus. Tùy chọn giao diện vẫn được giữ."
           onConfirm={async () => {
             setDb(repository.resetDemo());
-            notify("Demo workspace reset.");
+            notify("Đã xóa dữ liệu demo.");
             navigate("/");
           }}
         />
@@ -741,8 +748,8 @@ function Profile() {
       <Confirm
         open={removeAvatarOpen}
         onClose={() => setRemoveAvatarOpen(false)}
-        title="Remove your avatar?"
-        description="Your profile will use your initial until you upload another image."
+        title="Xóa ảnh đại diện?"
+        description="Hồ sơ sẽ hiển thị chữ cái đầu tên bạn cho đến khi tải ảnh mới."
         onConfirm={removeAvatar}
       />
     </>

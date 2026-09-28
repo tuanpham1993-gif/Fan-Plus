@@ -1,5 +1,6 @@
 import io
 import os
+from datetime import date, timedelta
 
 import pytest
 import app as app_module
@@ -595,3 +596,219 @@ def test_remove_avatar_does_not_delete_another_users_file(client):
     finally:
         if os.path.exists(other_path):
             os.remove(other_path)
+
+
+def register_profile_user(client, email='personal-profile@gmail.com'):
+    response = client.post('/api/auth/register', json={
+        'name': 'Personal User',
+        'email': email,
+        'password': 'Password123@',
+        'captcha_token': TEST_CAPTCHA
+    })
+    assert response.status_code == 201
+    login = client.post('/api/auth/login', json={
+        'email': email,
+        'password': 'Password123@',
+        'captcha_token': TEST_CAPTCHA
+    })
+    assert login.status_code == 200
+    return {'Authorization': f'Bearer {login.json["access_token"]}'}
+
+
+@pytest.mark.parametrize(
+    ('field', 'value', 'expected'),
+    [
+        ('phone', '+84 (987) 654-321', '+84 (987) 654-321'),
+        ('birthday', '1990-02-03', '1990-02-03'),
+        ('gender', 'undisclosed', 'undisclosed'),
+        ('city', '  Ho Chi Minh City  ', 'Ho Chi Minh City'),
+        ('bio', '  A short profile.  ', 'A short profile.'),
+    ],
+)
+def test_update_personal_profile_fields_individually(client, field, value, expected):
+    from models.user import User
+
+    headers = register_profile_user(client)
+    response = client.put('/api/users/me', json={field: value}, headers=headers)
+    assert response.status_code == 200
+    assert response.json['user'][field] == expected
+    if field == 'birthday':
+        assert db.session.query(User).filter_by(email='personal-profile@gmail.com').first().birthday == date(1990, 2, 3)
+
+
+def test_update_personal_profile_all_fields_together(client):
+    headers = register_profile_user(client)
+    response = client.put('/api/users/me', json={
+        'phone': '+84987654321',
+        'birthday': '1990-02-03',
+        'gender': 'female',
+        'city': 'Hanoi',
+        'bio': 'A profile bio.',
+    }, headers=headers)
+    assert response.status_code == 200
+    assert {key: response.json['user'][key] for key in ('phone', 'birthday', 'gender', 'city', 'bio')} == {
+        'phone': '+84987654321',
+        'birthday': '1990-02-03',
+        'gender': 'female',
+        'city': 'Hanoi',
+        'bio': 'A profile bio.',
+    }
+
+
+def test_update_personal_profile_omitted_fields_are_preserved(client):
+    headers = register_profile_user(client)
+    client.put('/api/users/me', json={
+        'phone': '+84987654321',
+        'birthday': '1990-02-03',
+        'gender': 'other',
+        'city': 'Hanoi',
+        'bio': 'Keep this bio.',
+    }, headers=headers)
+
+    response = client.put('/api/users/me', json={'city': 'Da Nang'}, headers=headers)
+
+    assert response.status_code == 200
+    assert {key: response.json['user'][key] for key in ('phone', 'birthday', 'gender', 'city', 'bio')} == {
+        'phone': '+84987654321',
+        'birthday': '1990-02-03',
+        'gender': 'other',
+        'city': 'Da Nang',
+        'bio': 'Keep this bio.',
+    }
+
+
+def test_update_personal_profile_null_and_blank_values_clear_fields(client):
+    headers = register_profile_user(client)
+    client.put('/api/users/me', json={
+        'phone': '+84987654321',
+        'birthday': '1990-02-03',
+        'gender': 'male',
+        'city': 'Hanoi',
+        'bio': 'Clear this bio.',
+    }, headers=headers)
+
+    response = client.put('/api/users/me', json={
+        'phone': None,
+        'birthday': '',
+        'gender': '  ',
+        'city': None,
+        'bio': '',
+    }, headers=headers)
+
+    assert response.status_code == 200
+    assert {key: response.json['user'][key] for key in ('phone', 'birthday', 'gender', 'city', 'bio')} == {
+        'phone': None,
+        'birthday': None,
+        'gender': None,
+        'city': None,
+        'bio': None,
+    }
+
+
+@pytest.mark.parametrize(
+    ('field', 'value', 'message'),
+    [
+        ('phone', '1234567x', 'Số điện thoại chỉ được chứa chữ số, dấu +, khoảng trắng, dấu gạch ngang và ngoặc đơn'),
+        ('phone', '1234567', 'Số điện thoại phải có từ 8 đến 20 ký tự (không tính khoảng trắng) và ít nhất 8 chữ số'),
+        ('phone', '123456789012345678901', 'Số điện thoại phải có từ 8 đến 20 ký tự (không tính khoảng trắng) và ít nhất 8 chữ số'),
+        ('phone', 12345678, 'Thông tin cá nhân phải là văn bản'),
+        ('birthday', (date.today() + timedelta(days=1)).isoformat(), 'Ngày sinh không được ở tương lai'),
+        ('birthday', '1990-02-30', 'Ngày sinh phải có định dạng YYYY-MM-DD hợp lệ'),
+        ('birthday', '1900-01-01', 'Tuổi không được vượt quá 120'),
+        ('birthday', [], 'Thông tin cá nhân phải là văn bản'),
+        ('gender', 'unknown', 'Giới tính không hợp lệ'),
+        ('gender', {}, 'Thông tin cá nhân phải là văn bản'),
+        ('city', 'c' * 101, 'Thành phố không được vượt quá 100 ký tự'),
+        ('city', 42, 'Thông tin cá nhân phải là văn bản'),
+        ('bio', 'b' * 301, 'Giới thiệu bản thân không được vượt quá 300 ký tự'),
+        ('bio', {'text': 'bio'}, 'Thông tin cá nhân phải là văn bản'),
+        ('name', 'n' * 61, 'Tên hiển thị không được dài quá 60 ký tự'),
+        ('name', ['not', 'text'], 'Tên hiển thị không hợp lệ'),
+    ],
+)
+def test_invalid_personal_profile_update_is_atomic(client, field, value, message):
+    headers = register_profile_user(client)
+    client.put('/api/users/me', json={
+        'name': 'Stable Name',
+        'favorite_fandoms': ['Anime'],
+        'display_preferences': {'favoriteCategories': ['anime']},
+        'phone': '+84987654321',
+        'birthday': '1990-02-03',
+        'gender': 'female',
+        'city': 'Hanoi',
+        'bio': 'Stable bio.',
+    }, headers=headers)
+    before = client.get('/api/users/me', headers=headers).json['user']
+
+    payload = {
+        'name': 'Must Not Be Applied',
+        'favorite_fandoms': ['Manga'],
+        'display_preferences': {'theme': 'light'},
+        'phone': '+84123456789',
+        field: value,
+    }
+    response = client.put('/api/users/me', json=payload, headers=headers)
+
+    assert response.status_code == 400
+    assert response.json['message'] == message
+    assert client.get('/api/users/me', headers=headers).json['user'] == before
+
+
+def test_update_profile_still_ignores_avatar_email_role_and_status(client):
+    headers = register_profile_user(client)
+    response = client.put('/api/users/me', json={
+        'avatar': 'https://example.com/avatar.jpg',
+        'email': 'changed@example.com',
+        'role': 'admin',
+        'status': 'suspended',
+    }, headers=headers)
+
+    assert response.status_code == 200
+    assert response.json['user']['avatar'] is None
+    assert response.json['user']['email'] == 'personal-profile@gmail.com'
+    assert response.json['user']['role'] == 'user'
+    assert response.json['user']['status'] == 'active'
+
+
+def test_profile_commit_failure_rolls_back_and_returns_generic_error(client, monkeypatch):
+    headers = register_profile_user(client)
+    original_commit = db.session.commit
+
+    def fail_commit():
+        raise ValueError('database failure')
+
+    monkeypatch.setattr(db.session, 'commit', fail_commit)
+    response = client.put('/api/users/me', json={
+        'name': 'Must Roll Back',
+        'phone': '+84987654321',
+    }, headers=headers)
+    monkeypatch.setattr(db.session, 'commit', original_commit)
+
+    assert response.status_code == 500
+    assert response.json['message'] == 'Không thể lưu hồ sơ'
+    assert client.get('/api/users/me', headers=headers).json['user']['name'] == 'Personal User'
+    assert client.get('/api/users/me', headers=headers).json['user']['phone'] is None
+
+
+def test_admin_user_projections_do_not_include_personal_profile_fields(client):
+    from crud.admin_crud import get_admin_stats
+    from models.user import User
+    from routes.admin_workspace import user_json
+
+    register_profile_user(client, 'private-user@gmail.com')
+    user = db.session.query(User).filter_by(email='private-user@gmail.com').first()
+    user.phone = '+84987654321'
+    user.birthday = date(1990, 2, 3)
+    user.gender = 'female'
+    user.city = 'Hanoi'
+    user.bio = 'Private bio.'
+    db.session.commit()
+
+    admin_projection = user_json(user)
+    stats_projection = get_admin_stats()['recent_users']
+    private_fields = {'phone', 'birthday', 'gender', 'city', 'bio'}
+
+    assert {'id', 'name', 'avatar'} <= user.to_public_dict().keys()
+    assert not private_fields.intersection(admin_projection)
+    assert stats_projection
+    assert all(not private_fields.intersection(item) for item in stats_projection)

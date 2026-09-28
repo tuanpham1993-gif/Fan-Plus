@@ -86,6 +86,11 @@ export interface User {
   name: string;
   email: string;
   avatar: string | null;
+  phone?: string | null;
+  birthday?: string | null;
+  gender?: string | null;
+  city?: string | null;
+  bio?: string | null;
   role: Role;
   status: string;
   favorite_fandoms: string[];

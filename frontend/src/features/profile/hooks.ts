@@ -26,6 +26,11 @@ function hasMeaningfulProfileDiff(current: User | null, next: User): boolean {
     current.name !== next.name ||
     (current.avatar ?? null) !== (next.avatar ?? null) ||
     current.status !== next.status ||
+    (current.phone ?? null) !== (next.phone ?? null) ||
+    (current.birthday ?? null) !== (next.birthday ?? null) ||
+    (current.gender ?? null) !== (next.gender ?? null) ||
+    (current.city ?? null) !== (next.city ?? null) ||
+    (current.bio ?? null) !== (next.bio ?? null) ||
     JSON.stringify(currentFavoriteFandoms) !==
       JSON.stringify(nextFavoriteFandoms) ||
     JSON.stringify(currentDisplayPreferences) !==

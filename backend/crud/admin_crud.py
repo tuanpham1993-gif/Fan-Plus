@@ -19,7 +19,7 @@ def get_admin_stats():
          'category_id': c.category_id, 'created_at': c.created_at.isoformat() if c.created_at else None}
         for c in Content.query.order_by(Content.created_at.desc()).limit(5).all()
     ]
-    recent_users = [u.to_dict() for u in User.query.order_by(User.created_at.desc()).limit(5).all()]
+    recent_users = [u.to_admin_dict() for u in User.query.order_by(User.created_at.desc()).limit(5).all()]
 
     return {
         'stats': {
