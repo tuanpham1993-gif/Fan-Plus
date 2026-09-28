@@ -1,15 +1,37 @@
-
 // Shared HTTP boundary for Flask-backed frontend feature.
 
 declare global {
   interface Window {
     FANHUB_RUNTIME?: { api: boolean };
   }
+
+  interface ImportMeta {
+    readonly env: {
+      readonly DEV: boolean;
+      readonly VITE_API_URL?: string;
+    };
+  }
 }
 
-export const API_BASE_URL = "/api";
+const configuredBackendOrigin = import.meta.env.VITE_API_URL?.trim().replace(
+  /\/+$/,
+  "",
+);
+export const API_BASE_URL = configuredBackendOrigin
+  ? `${configuredBackendOrigin}/api`
+  : "/api";
 export const serverMode =
   typeof window !== "undefined" && window.FANHUB_RUNTIME?.api === true;
+
+export function resolveAvatarUrl(avatar?: string | null): string {
+  if (!avatar?.trim()) return "";
+  if (/^(https?:\/\/|data:|blob:)/i.test(avatar)) return avatar;
+  if (!avatar.startsWith("/")) return avatar;
+  if (import.meta.env.DEV) return avatar;
+
+  const backendOrigin = configuredBackendOrigin || window.location.origin;
+  return new URL(avatar, backendOrigin).toString();
+}
 
 const DEFAULT_TIMEOUT_MS = 45_000;
 
@@ -44,8 +66,7 @@ export function clearTokens() {
   }
 }
 
-export function clearCsrf() {
-}
+export function clearCsrf() {}
 
 export interface ApiRequestOptions extends RequestInit {
   timeoutMs?: number;
@@ -67,7 +88,9 @@ export class ApiError extends Error {
 
 function apiUrl(path: string, useApiPrefix = true) {
   if (/^https?:\/\//i.test(path)) {
-    throw new ApiError("Absolute API URLs are not allowed by the shared client.");
+    throw new ApiError(
+      "Absolute API URLs are not allowed by the shared client.",
+    );
   }
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   return useApiPrefix ? API_BASE_URL + normalizedPath : normalizedPath;
@@ -165,7 +188,11 @@ export async function api<T>(
     timeoutMs,
   );
 
-  if (response.status === 401 && getRefreshToken() && path !== "/auth/refresh") {
+  if (
+    response.status === 401 &&
+    getRefreshToken() &&
+    path !== "/auth/refresh"
+  ) {
     try {
       const refreshRes = await fetchWithTimeout(
         apiUrl("/auth/refresh"),
@@ -269,4 +296,3 @@ export const json = (method: string, body: unknown): ApiRequestOptions => ({
   method,
   body: JSON.stringify(body),
 });
-

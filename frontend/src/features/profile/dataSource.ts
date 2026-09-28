@@ -11,7 +11,7 @@ import { profileApi } from "./api";
 
 export interface EditableProfile {
   name: string;
-  avatar: string;
+  avatar?: string | null;
   favorite_fandoms: string[];
   display_preferences?: Record<string, unknown>;
 }

@@ -50,7 +50,7 @@ export const authApi = {
     return { user: result.user as User };
   },
 
-  // ⚠️ CHƯA CÓ Ở BACKEND — endpoint /auth/verify và /auth/resend-verification
+  // CHƯA CÓ Ở BACKEND — endpoint /auth/verify và /auth/resend-verification
   // hiện KHÔNG tồn tại trong backend thật (xác nhận qua scan route).
   // Gọi các hàm này ở thời điểm hiện tại sẽ luôn nhận 404.
   async verify(email: string, code: string) {
@@ -67,7 +67,7 @@ export const authApi = {
     };
   },
 
-  // ⚠️ CHƯA CÓ Ở BACKEND — endpoint /auth/verify và /auth/resend-verification
+  // CHƯA CÓ Ở BACKEND — endpoint /auth/verify và /auth/resend-verification
   // hiện KHÔNG tồn tại trong backend thật (xác nhận qua scan route).
   // Gọi các hàm này ở thời điểm hiện tại sẽ luôn nhận 404.
   async resendVerification(email: string) {

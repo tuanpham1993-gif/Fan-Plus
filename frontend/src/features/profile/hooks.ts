@@ -77,6 +77,9 @@ export function useProfileSettings() {
   useEffect(() => {
     if (!user) {
       lastFetchedUserIdRef.current = null;
+      setProfile(null);
+      setLoading(false);
+      setError("");
       return;
     }
 
@@ -85,14 +88,29 @@ export function useProfileSettings() {
       profile &&
       profile.id === user.id
     ) {
+      setLoading(false);
       return;
     }
 
-    lastFetchedUserIdRef.current = user.id;
-
     const controller = new AbortController();
-    void load(controller.signal);
-    return () => controller.abort();
+    let completed = false;
+    const request = load(controller.signal);
+    void request.then((next) => {
+      if (!controller.signal.aborted && next) {
+        lastFetchedUserIdRef.current = user.id;
+        completed = true;
+      }
+    });
+
+    return () => {
+      controller.abort();
+      if (!completed) {
+        if (lastFetchedUserIdRef.current === user.id) {
+          lastFetchedUserIdRef.current = null;
+        }
+        setLoading(false);
+      }
+    };
   }, [user?.id, load, profile]);
 
   const save = useCallback(
@@ -118,6 +136,14 @@ export function useProfileSettings() {
     [profile, user?.id, adoptUser, setDb],
   );
 
+  const adoptProfile = useCallback(
+    (next: User) => {
+      setProfile(next);
+      adoptUser(next);
+    },
+    [adoptUser],
+  );
+
   return {
     profile,
     loading,
@@ -125,5 +151,6 @@ export function useProfileSettings() {
     error,
     reload: load,
     save,
+    adoptProfile,
   };
 }

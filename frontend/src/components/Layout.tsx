@@ -1,6 +1,6 @@
 import { LoreDock, LoreFab, openLore } from "../features/Lore";
 import { useAuth } from "../features/auth/AuthProvider";
-import { serverMode } from "../shared/http/client";
+import { resolveAvatarUrl, serverMode } from "../shared/http/client";
 import React, { useEffect, useState } from "react";
 import { Link, navigate, useLocation } from "../lib/router";
 import { useApp } from "../lib/store";
@@ -42,6 +42,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [menu, setMenu] = useState(false),
     [search, setSearch] = useState(false),
     [q, setQ] = useState("");
+  const [avatarBroken, setAvatarBroken] = useState(false);
+  useEffect(() => {
+    setAvatarBroken(false);
+  }, [user?.avatar]);
   useEffect(() => {
     setMenu(false);
     const el = document.getElementById("main");
@@ -171,8 +175,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             ) : user ? (
               <details className="account-menu">
                 <summary className="avatar" aria-label="Account menu">
-                  {user.avatar ? (
-                    <img src={user.avatar} alt="" />
+                  {user.avatar && !avatarBroken ? (
+                    <img
+                      src={resolveAvatarUrl(user.avatar)}
+                      alt={`Avatar of ${user.name}`}
+                      onError={() => setAvatarBroken(true)}
+                    />
                   ) : (
                     user.name.slice(0, 2).toUpperCase()
                   )}

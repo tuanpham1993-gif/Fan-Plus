@@ -10,6 +10,7 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(255), nullable=False)
     avatar = db.Column(db.String(255), default=None, nullable=True)
+    favorite_fandoms = db.Column(db.Text, default='', nullable=True)
     role = db.Column(db.String(20), nullable=False, default='user')
     status = db.Column(db.String(20), nullable=False, default='active')
     display_preferences = db.Column(db.String(255), default='{"theme":"dark","font_size":"medium"}')
@@ -27,11 +28,17 @@ class User(db.Model):
             return {"theme": "dark", "font_size": "medium"}
 
     def to_dict(self):
+        favorite_fandoms = [
+            fandom.strip()
+            for fandom in (self.favorite_fandoms or '').split(',')
+            if fandom.strip()
+        ]
         return {
             'id': self.id,
             'name': self.name,
             'email': self.email,
             'avatar': self.avatar,
+            'favorite_fandoms': favorite_fandoms,
             'role': self.role,
             'status': self.status,
             'display_preferences': self.get_display_preferences(),

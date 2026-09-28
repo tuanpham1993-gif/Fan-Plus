@@ -1,0 +1,1712 @@
+=== 1. TÓM TẮT ===
+LỖI PUT AVATAR
+- Đã sửa: PUT /api/users/me không còn đọc hoặc truyền trường avatar; avatar chỉ đổi qua POST /api/users/me/avatar và DELETE cùng endpoint. Bằng chứng cuối: backend/routes/user_routes.py:70, backend/crud/user_crud.py:39. Test gửi avatar URL ngoài nhưng avatar vẫn giữ nguyên/null: backend/tests/test_user.py:66.
+
+DISPLAY_PREFERENCES
+- Đã sửa: chỉ nhận dict, merge lên JSON preference đang có, compact-serialize rồi giới hạn <=255 ký tự; giữ theme/font_size khi payload chỉ gửi favoriteCategories. Bằng chứng: backend/crud/user_crud.py:48-55; test tương ứng backend/tests/test_user.py:91-98.
+
+FAVORITE_FANDOMS
+- Đã sửa: yêu cầu list; strip từng tên, bỏ rỗng, loại trùng không phân biệt hoa/thường, cấm dấu phẩy, tối đa 20 tên và 80 ký tự/tên; lỗi trả HTTP 400 với thông điệp tiếng Việt. Bằng chứng: backend/crud/user_crud.py:12-34; routes bắt ValueError trả JSON 400 tại backend/routes/user_routes.py:80-81.
+
+STRICTMODE PROFILE LOADING
+- Đã sửa: lastFetchedUserIdRef chỉ được gán sau khi fetch thành công; cleanup request chưa hoàn tất thì abort, reset ref và tắt loading. Bằng chứng: frontend/src/features/profile/hooks.ts:97-111. frontend/src/main.tsx:11 xác nhận ứng dụng được bọc trong React.StrictMode.
+
+FRONTEND TEST EMOJI
+- Đã sửa lỗi hiển nhiên: hai comment trong frontend/src/features/auth/api.ts có marker pictograph ⚠️ dù chỉ mang thông tin cảnh báo. Đã bỏ marker, giữ nội dung comment; test “Product source contains no emoji pictographs” hiện pass.
+
+UPLOAD TEST ISOLATION / FILE CLEANUP
+- Đã sửa: fixture backend/tests/test_user.py monkeypatch cả backend.app.AVATAR_UPLOAD_DIR và routes.user_routes.AVATAR_UPLOAD_DIR sang tmp_path. Route phục vụ GET ảnh dùng constant backend.app.AVATAR_UPLOAD_DIR. Hai file đúng tên u1-old.png và u1-ownerb.png đã được liệt kê trước rồi xóa; không file nào khác bị xóa.
+
+CONFIRM
+- Không cần sửa: frontend/src/components/ui.tsx Confirm gọi onClose() trong finally, do đó tự đóng cả khi onConfirm lỗi. Bằng chứng: frontend/src/components/ui.tsx:449-452.
+
+DATABASE / ERRNO 150
+- Không đổi schema MySQL. Xác nhận favorite_fandoms column có mặt sau ALTER do người dùng chạy; categories_count=0, characters_count=0.
+- Model Category và MerchandiseItem dùng INT cho category_id, khớp cột categories.category_id. Model Character/ MerchandiseItem tham chiếu characters.character_id, nhưng schema legacy của MySQL trước đó có PK tên id, không phải character_id; đây là điểm lệch đã quan sát trong avatar_fix_report.txt. Không chạy ALTER/DROP. Đề xuất thận trọng tại Mục 6.
+
+=== 2. DANH SÁCH FILE SỬA/TẠO ===
+- backend/app.py
+- backend/crud/user_crud.py
+- backend/routes/user_routes.py
+- backend/tests/test_user.py
+- frontend/src/features/profile/hooks.ts
+- frontend/src/features/auth/api.ts
+- avatar_fix_report_2.txt - báo cáo kết quả và nội dung source cuối cùng.
+
+=== 3. NỘI DUNG CUỐI TỪNG FILE ĐÃ SỬA ===
+=== FILE SOURCE 1: backend/app.py ===
+--- FILE: backend/app.py ---
+import os
+import re
+import pymysql
+
+from flask import Flask, jsonify, send_from_directory
+
+from config import Config
+from extensions import db, jwt, cors
+from routes import register_blueprints
+from seed import seed_database
+
+AVATAR_UPLOAD_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "uploads", "avatars"))
+
+
+def check_mysql_connection(uri):
+    try:
+        user_pass_host = uri.split("://")[1].split("/")[0]
+        user_pass, host_port = user_pass_host.split("@")
+        user, password = user_pass.split(":")
+
+        if ":" in host_port:
+            host, port = host_port.split(":")
+            port = int(port)
+        else:
+            host = host_port
+            port = 3306
+
+        conn = pymysql.connect(
+            host=host,  
+            user=user,
+            password=password,
+            port=port,
+            connect_timeout=2
+        )
+
+        conn.close()
+        return True
+
+    except Exception:
+        return False
+
+
+def create_app(testing=False):
+
+    app = Flask(__name__)
+
+    app.config.from_object(Config)
+
+    if testing:
+        app.config["SQLALCHEMY_DATABASE_URI"] = Config.SQLITE_DB_URI
+        print("Database Driver: SQLite (Test mode active)")
+    else:
+        use_mysql = check_mysql_connection(Config.MYSQL_DB_URI)
+
+        if use_mysql:
+            app.config["SQLALCHEMY_DATABASE_URI"] = Config.MYSQL_DB_URI
+            print("Database Driver: MySQL (Live MySQL server connected)")
+        else:
+            app.config["SQLALCHEMY_DATABASE_URI"] = Config.SQLITE_DB_URI
+            print("Database Driver: SQLite (Local Fallback mode active)")
+
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+    db.init_app(app)
+    jwt.init_app(app)
+
+    cors.init_app(
+        app,
+        resources={r"/api/*": {"origins": "*"}}
+    )
+
+    from routes.category import category_bp
+    from routes.character import character_bp
+    from routes.merchandise import merchandise_bp
+
+    app.register_blueprint(category_bp)
+    app.register_blueprint(character_bp)
+    app.register_blueprint(merchandise_bp)
+
+    register_blueprints(app)
+
+    with app.app_context():
+        try:
+            db.create_all()
+
+        except Exception as err:
+            print(f"Database init warning: {err}")
+
+    @app.route("/uploads/<path:filename>", methods=["GET"])
+    def uploaded_file(filename):
+        return send_from_directory(
+            os.path.join(os.getcwd(), "uploads"),
+            filename
+        )
+
+    @app.route("/api/uploads/avatars/<filename>", methods=["GET"])
+    def uploaded_avatar(filename):
+        if not re.fullmatch(r"u\d+-[0-9a-fA-F]+\.(png|jpe?g|webp)", filename):
+            return jsonify({"message": "Ảnh không tồn tại hoặc không hợp lệ"}), 404
+
+        try:
+            return send_from_directory(AVATAR_UPLOAD_DIR, filename)
+        except Exception:
+            return jsonify({"message": "Ảnh không tồn tại hoặc không hợp lệ"}), 404
+
+    @app.route("/api/health", methods=["GET"])
+    def health_check():
+        return jsonify({
+            "status": "healthy",
+            "app": "Fan Hub API",
+            "version": "1.0.0",
+            "database": app.config[
+                "SQLALCHEMY_DATABASE_URI"
+            ].split("://")[0]
+        }), 200
+
+    @app.errorhandler(404)
+    def not_found(e):
+        return jsonify({
+            "error": "Resource not found"
+        }), 404
+
+    @app.errorhandler(500)
+    def server_error(e):
+        return jsonify({
+            "error": "Internal server error"
+        }), 500
+
+    return app
+
+
+app = create_app()
+
+
+if __name__ == "__main__":
+
+    port = int(os.getenv("PORT", 5000))
+
+    print(f"Starting Fan Hub Backend on port {port}...")
+
+    app.run(
+        host="0.0.0.0",
+        port=port,
+        debug=True
+    )
+--- HẾT ---
+=== FILE SOURCE 2: backend/crud/user_crud.py ===
+--- FILE: backend/crud/user_crud.py ---
+import json
+from extensions import db
+from models.user import User
+from models.bookmark import Bookmark
+from models.content import Content
+
+
+def get_user_by_id(user_id):
+    return db.session.query(User).get(user_id)
+
+
+def _normalize_favorite_fandoms(favorite_fandoms):
+    if not isinstance(favorite_fandoms, list):
+        raise ValueError('Danh sách fandom không hợp lệ')
+
+    normalized = []
+    seen = set()
+    for fandom in favorite_fandoms:
+        if not isinstance(fandom, str):
+            raise ValueError('Tên fandom không hợp lệ')
+        fandom = fandom.strip()
+        if not fandom:
+            continue
+        if ',' in fandom:
+            raise ValueError('Tên fandom không được chứa dấu phẩy')
+        if len(fandom) > 80:
+            raise ValueError('Mỗi fandom không được dài quá 80 ký tự')
+        normalized_key = fandom.casefold()
+        if normalized_key in seen:
+            continue
+        seen.add(normalized_key)
+        normalized.append(fandom)
+
+    if len(normalized) > 20:
+        raise ValueError('Chỉ được chọn tối đa 20 fandom')
+    return normalized
+
+
+def update_user_profile(user, name=None, favorite_fandoms=None, display_preferences=None):
+    normalized_fandoms = None
+    if favorite_fandoms is not None:
+        normalized_fandoms = _normalize_favorite_fandoms(favorite_fandoms)
+
+    serialized_preferences = None
+    if display_preferences is not None:
+        if not isinstance(display_preferences, dict):
+            raise ValueError('Tùy chọn hiển thị phải là một đối tượng JSON')
+        merged_preferences = user.get_display_preferences().copy()
+        merged_preferences.update(display_preferences)
+        serialized_preferences = json.dumps(
+            merged_preferences,
+            ensure_ascii=False,
+            separators=(',', ':')
+        )
+        if len(serialized_preferences) > 255:
+            raise ValueError('Tùy chọn hiển thị không được vượt quá 255 ký tự')
+
+    if name is not None and name.strip():
+        user.name = name.strip()
+    if normalized_fandoms is not None:
+        user.favorite_fandoms = ','.join(normalized_fandoms)
+    if serialized_preferences is not None:
+        user.display_preferences = serialized_preferences
+
+    db.session.commit()
+    return user
+
+
+def get_user_dashboard(user_id):
+    user = get_user_by_id(user_id)
+    if not user:
+        return None
+
+    bookmarks = Bookmark.query.filter_by(user_id=user_id).order_by(Bookmark.created_at.desc()).limit(5).all()
+    bookmarked_items = [bm.to_dict() for bm in bookmarks if bm.content is not None]
+
+    user_contents = Content.query.filter_by(author_id=user_id).order_by(Content.created_at.desc()).limit(5).all()
+    recent_activity = [c.to_dict(include_full=False) for c in user_contents]
+
+    return {
+        'greeting': f"Hello, {user.name}! Welcome back to Fan Hub.",
+        'user': user.to_dict(),
+        'bookmarked_items': bookmarked_items,
+        'recent_activity': recent_activity
+    }
+--- HẾT ---
+=== FILE SOURCE 3: backend/routes/user_routes.py ===
+--- FILE: backend/routes/user_routes.py ---
+import os
+import re
+from urllib.parse import urlparse
+
+from flask import Blueprint, request, jsonify, g, send_from_directory
+from extensions import db
+from crud import auth_crud, user_crud
+from middleware.auth_middleware import token_required
+from utils.password_utils import hash_password, verify_password, validate_password_complexity
+
+AVATAR_UPLOAD_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'uploads', 'avatars'))
+MAX_AVATAR_SIZE = 2 * 1024 * 1024
+MAX_AVATAR_SIZE_WITH_PADDING = MAX_AVATAR_SIZE + 64 * 1024
+ALLOWED_AVATAR_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp'}
+
+user_bp = Blueprint('user', __name__, url_prefix='/api/users')
+
+
+def _safe_avatar_filename(user_id, file_name):
+    if not file_name:
+        return None
+    name = os.path.basename(file_name)
+    if not name or '.' not in name:
+        return None
+    ext = name.rsplit('.', 1)[1].lower()
+    if ext not in ALLOWED_AVATAR_EXTENSIONS:
+        return None
+    return f"u{user_id}-{os.urandom(16).hex()}.{ext}"
+
+
+def _image_magic_matches(file_bytes, extension):
+    if extension in {'jpg', 'jpeg'}:
+        return file_bytes.startswith(b'\xff\xd8\xff')
+    if extension == 'png':
+        return file_bytes.startswith(b'\x89PNG\r\n\x1a\n')
+    if extension == 'webp':
+        return file_bytes.startswith(b'RIFF') and file_bytes[8:12] == b'WEBP'
+    return False
+
+
+def _delete_old_avatar_if_needed(user, previous_avatar_url):
+    if not previous_avatar_url:
+        return
+    if not previous_avatar_url.startswith('/api/uploads/avatars/'):
+        return
+    old_filename = os.path.basename(previous_avatar_url)
+    if not old_filename or not old_filename.startswith(f'u{user.id}-'):
+        return
+
+    old_path = os.path.abspath(os.path.join(AVATAR_UPLOAD_DIR, old_filename))
+    if os.path.commonpath([AVATAR_UPLOAD_DIR, old_path]) != AVATAR_UPLOAD_DIR:
+        return
+    try:
+        if os.path.exists(old_path):
+            os.remove(old_path)
+    except OSError:
+        pass
+
+
+@user_bp.route('/me', methods=['GET'])
+@token_required
+def get_user_profile():
+    return jsonify({
+        'user': g.current_user.to_dict()
+    }), 200
+
+
+@user_bp.route('/me', methods=['PUT'])
+@token_required
+def update_user_profile():
+    data = request.get_json(silent=True) or {}
+
+    try:
+        updated_user = user_crud.update_user_profile(
+            user=g.current_user,
+            name=data.get('name'),
+            favorite_fandoms=data.get('favorite_fandoms'),
+            display_preferences=data.get('display_preferences')
+        )
+    except ValueError as exc:
+        return jsonify({'message': str(exc)}), 400
+
+    return jsonify({
+        'message': 'Cập nhật hồ sơ cá nhân thành công',
+        'user': updated_user.to_dict()
+    }), 200
+
+
+@user_bp.route('/me/password', methods=['PUT'])
+@token_required
+def update_user_password():
+    user = g.current_user
+    data = request.get_json(silent=True) or {}
+
+    current_password = data.get('current_password', '')
+    new_password = data.get('new_password', '')
+
+    if current_password == '' or new_password == '':
+        return jsonify({'message': 'Vui lòng nhập mật khẩu hiện tại và mật khẩu mới'}), 400
+
+    if new_password == current_password:
+        return jsonify({'message': 'Mật khẩu mới không được trùng mật khẩu cũ'}), 400
+
+    if not verify_password(user.password_hash, current_password):
+        return jsonify({'message': 'Mật khẩu hiện tại không đúng'}), 400
+
+    is_valid, err_msg = validate_password_complexity(new_password)
+    if not is_valid:
+        return jsonify({'message': err_msg}), 400
+
+    try:
+        user.password_hash = hash_password(new_password)
+        user.reset_token = None
+        auth_crud.revoke_all_refresh_tokens_for_user(user)
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        return jsonify({'message': 'Không thể đổi mật khẩu. Vui lòng thử lại'}), 500
+
+    return jsonify({
+        'message': 'Đổi mật khẩu thành công',
+        'user': user.to_dict()
+    }), 200
+
+
+@user_bp.route('/me/avatar', methods=['POST'])
+@token_required
+def upload_user_avatar():
+    if request.content_length is not None and request.content_length > MAX_AVATAR_SIZE_WITH_PADDING:
+        return jsonify({'message': 'Kích thước ảnh quá lớn. Tối đa 2MB'}), 413
+
+    if 'avatar' not in request.files:
+        return jsonify({'message': 'Thiếu file avatar'}), 400
+
+    file = request.files['avatar']
+    if file.filename == '':
+        return jsonify({'message': 'Vui lòng chọn file ảnh hợp lệ'}), 400
+
+    file_bytes = file.read(MAX_AVATAR_SIZE + 1)
+    if not file_bytes:
+        return jsonify({'message': 'File ảnh không hợp lệ'}), 400
+
+    if len(file_bytes) > MAX_AVATAR_SIZE:
+        return jsonify({'message': 'Kích thước ảnh quá lớn. Tối đa 2MB'}), 413
+
+    original_name = os.path.basename(file.filename)
+    extension = original_name.rsplit('.', 1)[1].lower() if '.' in original_name else ''
+    if extension not in ALLOWED_AVATAR_EXTENSIONS:
+        return jsonify({'message': 'Định dạng ảnh không hợp lệ. Chỉ hỗ trợ png, jpg, jpeg, webp'}), 415
+
+    if not _image_magic_matches(file_bytes, extension):
+        return jsonify({'message': 'Dữ liệu ảnh không hợp lệ'}), 415
+
+    os.makedirs(AVATAR_UPLOAD_DIR, exist_ok=True)
+    new_filename = _safe_avatar_filename(g.current_user.id, original_name)
+    if not new_filename:
+        return jsonify({'message': 'Tên file ảnh không hợp lệ'}), 415
+
+    save_path = os.path.join(AVATAR_UPLOAD_DIR, new_filename)
+    try:
+        with open(save_path, 'wb') as avatar_file:
+            avatar_file.write(file_bytes)
+    except OSError:
+        return jsonify({'message': 'Không thể lưu ảnh avatar'}), 500
+
+    previous_avatar_url = g.current_user.avatar or ''
+    new_avatar_url = f'/api/uploads/avatars/{new_filename}'
+    g.current_user.avatar = new_avatar_url
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        if os.path.exists(save_path):
+            os.remove(save_path)
+        return jsonify({'message': 'Lưu avatar thất bại'}), 500
+
+    if previous_avatar_url and previous_avatar_url.startswith('/api/uploads/avatars/'):
+        _delete_old_avatar_if_needed(g.current_user, previous_avatar_url)
+
+    return jsonify({
+        'message': 'Tải ảnh đại diện thành công',
+        'user': g.current_user.to_dict()
+    }), 200
+
+
+@user_bp.route('/me/avatar', methods=['DELETE'])
+@token_required
+def remove_user_avatar():
+    user = g.current_user
+    previous_avatar_url = user.avatar or ''
+    user.avatar = None
+
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        return jsonify({'message': 'Xóa avatar thất bại'}), 500
+
+    _delete_old_avatar_if_needed(user, previous_avatar_url)
+
+    return jsonify({
+        'message': 'Xóa ảnh đại diện thành công',
+        'user': user.to_dict()
+    }), 200
+
+
+@user_bp.route('/dashboard', methods=['GET'])
+@token_required
+def get_dashboard():
+    dashboard_data = user_crud.get_user_dashboard(g.current_user.id)
+    if not dashboard_data:
+        return jsonify({'error': 'User not found'}), 404
+    return jsonify(dashboard_data), 200
+--- HẾT ---
+=== FILE SOURCE 4: backend/tests/test_user.py ===
+--- FILE: backend/tests/test_user.py ---
+import io
+import os
+
+import pytest
+import app as app_module
+from app import create_app
+from extensions import db
+from routes import user_routes
+
+TEST_CAPTCHA = "***"
+
+
+def make_png_bytes():
+    return b'\x89PNG\r\n\x1a\n' + b'\x00' * 20
+
+
+def make_jpeg_bytes():
+    return b'\xff\xd8\xff\xe0\x00\x10JFIF' + b'\x00' * 20
+
+
+def make_webp_bytes():
+    return b'RIFF' + (b'\x00' * 8) + b'WEBP' + b'\x00' * 20
+
+
+@pytest.fixture
+def client(tmp_path, monkeypatch):
+    avatar_dir = tmp_path / 'avatars'
+    monkeypatch.setattr(app_module, 'AVATAR_UPLOAD_DIR', str(avatar_dir))
+    monkeypatch.setattr(user_routes, 'AVATAR_UPLOAD_DIR', str(avatar_dir))
+    app = create_app(testing=True)
+    app.config['TESTING'] = True
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
+
+    with app.test_client() as client:
+        with app.app_context():
+            db.create_all()
+            yield client
+            db.session.remove()
+            db.drop_all()
+
+
+def test_get_profile_authenticated(client):
+    client.post('/api/auth/register', json={
+        'name': 'Profile User',
+        'email': 'profile@gmail.com',
+        'password': '***',
+        'captcha_token': TEST_CAPTCHA
+    })
+    login_res = client.post('/api/auth/login', json={
+        'email': 'profile@gmail.com',
+        'password': '***',
+        'captcha_token': TEST_CAPTCHA
+    })
+    token = login_res.json['access_token']
+
+    res = client.get('/api/users/me', headers={'Authorization': f'Bearer {token}'})
+    assert res.status_code == 200
+    assert res.json['user']['email'] == 'profile@gmail.com'
+
+
+def test_get_profile_unauthenticated(client):
+    res = client.get('/api/users/me')
+    assert res.status_code == 401
+
+
+def test_update_profile(client):
+    client.post('/api/auth/register', json={
+        'name': 'Old Name',
+        'email': 'update@gmail.com',
+        'password': '***',
+        'captcha_token': TEST_CAPTCHA
+    })
+    login_res = client.post('/api/auth/login', json={
+        'email': 'update@gmail.com',
+        'password': '***',
+        'captcha_token': TEST_CAPTCHA
+    })
+    token = login_res.json['access_token']
+
+    res = client.put('/api/users/me', json={
+        'name': 'New Name',
+        'avatar': 'https://example.com/avatar.jpg',
+        'favorite_fandoms': ['Anime', 'Manga'],
+        'display_preferences': {'favoriteCategories': ['anime']}
+    }, headers={'Authorization': f'Bearer {token}'})
+
+    assert res.status_code == 200
+    assert res.json['user']['name'] == 'New Name'
+    assert res.json['user']['avatar'] is None
+    assert res.json['user']['favorite_fandoms'] == ['Anime', 'Manga']
+    assert res.json['user']['display_preferences'] == {
+        'theme': 'dark',
+        'font_size': 'medium',
+        'favoriteCategories': ['anime']
+    }
+
+
+def test_update_profile_merges_display_preferences(client):
+    client.post('/api/auth/register', json={
+        'name': 'Preference User',
+        'email': 'preferences@gmail.com',
+        'password': '***',
+        'captcha_token': TEST_CAPTCHA
+    })
+    login_res = client.post('/api/auth/login', json={
+        'email': 'preferences@gmail.com',
+        'password': '***',
+        'captcha_token': TEST_CAPTCHA
+    })
+
+    res = client.put(
+        '/api/users/me',
+        json={'display_preferences': {'favoriteCategories': ['anime']}},
+        headers={'Authorization': f'Bearer {login_res.json["access_token"]}'},
+    )
+
+    assert res.status_code == 200
+    assert res.json['user']['display_preferences'] == {
+        'theme': 'dark',
+        'font_size': 'medium',
+        'favoriteCategories': ['anime']
+    }
+
+
+@pytest.mark.parametrize(
+    ('preferences', 'message'),
+    [
+        (['not', 'an', 'object'], 'Tùy chọn hiển thị phải là một đối tượng JSON'),
+        ({'large': 'x' * 250}, 'Tùy chọn hiển thị không được vượt quá 255 ký tự'),
+    ],
+)
+def test_update_profile_rejects_invalid_display_preferences(client, preferences, message):
+    client.post('/api/auth/register', json={
+        'name': 'Invalid Preference User',
+        'email': 'invalid-preferences@gmail.com',
+        'password': '***',
+        'captcha_token': TEST_CAPTCHA
+    })
+    login_res = client.post('/api/auth/login', json={
+        'email': 'invalid-preferences@gmail.com',
+        'password': '***',
+        'captcha_token': TEST_CAPTCHA
+    })
+
+    res = client.put(
+        '/api/users/me',
+        json={'display_preferences': preferences},
+        headers={'Authorization': f'Bearer {login_res.json["access_token"]}'},
+    )
+
+    assert res.status_code == 400
+    assert res.json['message'] == message
+
+
+def test_update_profile_normalizes_favorite_fandoms(client):
+    client.post('/api/auth/register', json={
+        'name': 'Fandom User',
+        'email': 'fandoms@gmail.com',
+        'password': '***',
+        'captcha_token': TEST_CAPTCHA
+    })
+    login_res = client.post('/api/auth/login', json={
+        'email': 'fandoms@gmail.com',
+        'password': '***',
+        'captcha_token': TEST_CAPTCHA
+    })
+
+    res = client.put(
+        '/api/users/me',
+        json={'favorite_fandoms': [' Anime ', '', 'Manga', 'anime', '  ']},
+        headers={'Authorization': f'Bearer {login_res.json["access_token"]}'},
+    )
+
+    assert res.status_code == 200
+    assert res.json['user']['favorite_fandoms'] == ['Anime', 'Manga']
+
+
+@pytest.mark.parametrize(
+    ('fandoms', 'message'),
+    [
+        ([f'Fandom {index}' for index in range(21)], 'Chỉ được chọn tối đa 20 fandom'),
+        (['x' * 81], 'Mỗi fandom không được dài quá 80 ký tự'),
+        (['Fan, Club'], 'Tên fandom không được chứa dấu phẩy'),
+        ('Anime', 'Danh sách fandom không hợp lệ'),
+    ],
+)
+def test_update_profile_rejects_invalid_favorite_fandoms(client, fandoms, message):
+    client.post('/api/auth/register', json={
+        'name': 'Invalid Fandom User',
+        'email': 'invalid-fandoms@gmail.com',
+        'password': '***',
+        'captcha_token': TEST_CAPTCHA
+    })
+    login_res = client.post('/api/auth/login', json={
+        'email': 'invalid-fandoms@gmail.com',
+        'password': '***',
+        'captcha_token': TEST_CAPTCHA
+    })
+
+    res = client.put(
+        '/api/users/me',
+        json={'favorite_fandoms': fandoms},
+        headers={'Authorization': f'Bearer {login_res.json["access_token"]}'},
+    )
+
+    assert res.status_code == 400
+    assert res.json['message'] == message
+
+
+def test_change_password_and_invalidate_refresh_tokens(client):
+    client.post('/api/auth/register', json={
+        'name': 'Password User',
+        'email': 'passuser@gmail.com',
+        'password': '***',
+        'captcha_token': TEST_CAPTCHA
+    })
+    login_res = client.post('/api/auth/login', json={
+        'email': 'passuser@gmail.com',
+        'password': '***',
+        'captcha_token': TEST_CAPTCHA
+    })
+    access_token = login_res.json['access_token']
+    refresh_token = login_res.json['refresh_token']
+
+    bad_current = client.put(
+        '/api/users/me/password',
+        json={'current_password': '***', 'new_password': '***'},
+        headers={'Authorization': f'Bearer {access_token}'},
+    )
+    assert bad_current.status_code == 400
+    assert 'Mật khẩu hiện tại không đúng' in bad_current.json['message']
+
+    weak = client.put(
+        '/api/users/me/password',
+        json={'current_password': '***', 'new_password': 'weak'},
+        headers={'Authorization': f'Bearer {access_token}'},
+    )
+    assert weak.status_code == 400
+
+    good = client.put(
+        '/api/users/me/password',
+        json={'current_password': '***', 'new_password': '***'},
+        headers={'Authorization': f'Bearer {access_token}'},
+    )
+    assert good.status_code == 200
+
+    refresh_after_change = client.post('/api/auth/refresh', json={'refresh_token': refresh_token})
+    assert refresh_after_change.status_code == 401
+
+    relogin = client.post('/api/auth/login', json={
+        'email': 'passuser@gmail.com',
+        'password': '***',
+        'captcha_token': TEST_CAPTCHA
+    })
+    assert relogin.status_code == 200
+
+
+def test_upload_avatar_valid_and_invalid(client):
+    client.post('/api/auth/register', json={
+        'name': 'Avatar User',
+        'email': 'avataruser@gmail.com',
+        'password': '***',
+        'captcha_token': TEST_CAPTCHA
+    })
+    login_res = client.post('/api/auth/login', json={
+        'email': 'avataruser@gmail.com',
+        'password': '***',
+        'captcha_token': TEST_CAPTCHA
+    })
+    access_token = login_res.json['access_token']
+
+    valid = client.post(
+        '/api/users/me/avatar',
+        data={'avatar': (io.BytesIO(make_png_bytes()), 'avatar.png')},
+        headers={'Authorization': f'Bearer {access_token}'},
+    )
+    assert valid.status_code == 200
+    assert valid.json['user']['avatar'].startswith('/api/uploads/avatars/')
+
+    bad_ext = client.post(
+        '/api/users/me/avatar',
+        data={'avatar': (io.BytesIO(b'hello world'), 'fake.txt')},
+        headers={'Authorization': f'Bearer {access_token}'},
+    )
+    assert bad_ext.status_code == 415
+
+    disguised = client.post(
+        '/api/users/me/avatar',
+        data={'avatar': (io.BytesIO(b'hello world'), 'avatar.png')},
+        headers={'Authorization': f'Bearer {access_token}'},
+    )
+    assert disguised.status_code == 415
+
+    big_bytes = b'\x89PNG\r\n\x1a\n' + b'0' * (2 * 1024 * 1024 + 10)
+    too_big = client.post(
+        '/api/users/me/avatar',
+        data={'avatar': (io.BytesIO(big_bytes), 'avatar.png')},
+        headers={'Authorization': f'Bearer {access_token}'},
+    )
+    assert too_big.status_code == 413
+
+    filename = valid.json['user']['avatar'].split('/')[-1]
+    get_file = client.get(f'/api/uploads/avatars/{filename}')
+    assert get_file.status_code == 200
+    assert get_file.mimetype == 'image/png'
+
+    malicious = client.get('/api/uploads/avatars/../x')
+    assert malicious.status_code == 404
+
+    no_token = client.post('/api/users/me/avatar', data={'avatar': (io.BytesIO(make_webp_bytes()), 'avatar.webp')})
+    assert no_token.status_code == 401
+
+
+def test_change_password_accepts_trailing_space_and_relogin_with_exact_string(client):
+    client.post('/api/auth/register', json={
+        'name': 'Space User',
+        'email': 'spaceuser@gmail.com',
+        'password': '***',
+        'captcha_token': TEST_CAPTCHA
+    })
+    login_res = client.post('/api/auth/login', json={
+        'email': 'spaceuser@gmail.com',
+        'password': '***',
+        'captcha_token': TEST_CAPTCHA
+    })
+    assert login_res.status_code == 200
+    access_token = login_res.json['access_token']
+
+    change = client.put(
+        '/api/users/me/password',
+        json={'current_password': '***', 'new_password': 'New***'},
+        headers={'Authorization': f'Bearer {access_token}'},
+    )
+    assert change.status_code == 200
+
+    relogin = client.post('/api/auth/login', json={
+        'email': 'spaceuser@gmail.com',
+        'password': 'New***',
+        'captcha_token': TEST_CAPTCHA
+    })
+    assert relogin.status_code == 200
+
+
+def test_update_profile_rejects_foreign_avatar_url_and_keeps_owner_file(client):
+    from models.user import User
+
+    user_b = client.post('/api/auth/register', json={
+        'name': 'Owner B',
+        'email': 'ownerb@gmail.com',
+        'password': '***',
+        'captcha_token': TEST_CAPTCHA
+    })
+    assert user_b.status_code == 201
+    client.post('/api/auth/login', json={
+        'email': 'ownerb@gmail.com',
+        'password': '***',
+        'captcha_token': TEST_CAPTCHA
+    })
+    owner_b = db.session.query(User).filter_by(email='ownerb@gmail.com').first()
+    avatar_dir = user_routes.AVATAR_UPLOAD_DIR
+    os.makedirs(avatar_dir, exist_ok=True)
+    owned_name = f'u{owner_b.id}-ownerb.png'
+    owned_path = os.path.join(avatar_dir, owned_name)
+    with open(owned_path, 'wb') as fh:
+        fh.write(make_png_bytes())
+    owner_b.avatar = f'/api/uploads/avatars/{owned_name}'
+    db.session.commit()
+
+    client.post('/api/auth/register', json={
+        'name': 'Owner A',
+        'email': 'ownera@gmail.com',
+        'password': '***',
+        'captcha_token': TEST_CAPTCHA
+    })
+    login_a = client.post('/api/auth/login', json={
+        'email': 'ownera@gmail.com',
+        'password': '***',
+        'captcha_token': TEST_CAPTCHA
+    })
+    token_a = login_a.json['access_token']
+
+    res = client.put(
+        '/api/users/me',
+        json={'avatar': f'/api/uploads/avatars/{owned_name}'},
+        headers={'Authorization': f'Bearer {token_a}'},
+    )
+    assert res.status_code == 200
+    assert res.json['user']['avatar'] is None
+    assert os.path.exists(owned_path)
+
+
+def test_upload_avatar_second_upload_removes_first_file(client):
+    client.post('/api/auth/register', json={
+        'name': 'Cleanup User',
+        'email': 'cleanup@gmail.com',
+        'password': '***',
+        'captcha_token': TEST_CAPTCHA
+    })
+    login_res = client.post('/api/auth/login', json={
+        'email': 'cleanup@gmail.com',
+        'password': '***',
+        'captcha_token': TEST_CAPTCHA
+    })
+    token = login_res.json['access_token']
+
+    first = client.post(
+        '/api/users/me/avatar',
+        data={'avatar': (io.BytesIO(make_png_bytes()), 'first.png')},
+        headers={'Authorization': f'Bearer {token}'},
+    )
+    first_name = first.json['user']['avatar'].split('/')[-1]
+    first_path = os.path.join(user_routes.AVATAR_UPLOAD_DIR, first_name)
+
+    second = client.post(
+        '/api/users/me/avatar',
+        data={'avatar': (io.BytesIO(make_jpeg_bytes()), 'second.jpg')},
+        headers={'Authorization': f'Bearer {token}'},
+    )
+    second_name = second.json['user']['avatar'].split('/')[-1]
+    second_path = os.path.join(user_routes.AVATAR_UPLOAD_DIR, second_name)
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert not os.path.exists(first_path)
+    assert os.path.exists(second_path)
+
+
+def test_upload_avatar_commit_failure_keeps_old_file(client, monkeypatch):
+    from models.user import User
+
+    client.post('/api/auth/register', json={
+        'name': 'Rollback User',
+        'email': 'rollback@gmail.com',
+        'password': '***',
+        'captcha_token': TEST_CAPTCHA
+    })
+    login_res = client.post('/api/auth/login', json={
+        'email': 'rollback@gmail.com',
+        'password': '***',
+        'captcha_token': TEST_CAPTCHA
+    })
+    token = login_res.json['access_token']
+    user = db.session.query(User).filter_by(email='rollback@gmail.com').first()
+    avatar_dir = user_routes.AVATAR_UPLOAD_DIR
+    os.makedirs(avatar_dir, exist_ok=True)
+    old_name = f'u{user.id}-old.png'
+    old_path = os.path.join(avatar_dir, old_name)
+    with open(old_path, 'wb') as fh:
+        fh.write(make_png_bytes())
+    user.avatar = f'/api/uploads/avatars/{old_name}'
+    db.session.commit()
+
+    original_commit = db.session.commit
+
+    def fail_commit():
+        raise RuntimeError('forced commit failure')
+
+    monkeypatch.setattr(db.session, 'commit', fail_commit)
+    res = client.post(
+        '/api/users/me/avatar',
+        data={'avatar': (io.BytesIO(make_png_bytes()), 'new.png')},
+        headers={'Authorization': f'Bearer {token}'},
+    )
+    assert res.status_code == 500
+    assert os.path.exists(old_path)
+
+    expected_new_filename = os.path.basename(res.json.get('user', {}).get('avatar', '')) if isinstance(res.json, dict) else ''
+    if expected_new_filename:
+        assert not os.path.exists(os.path.join(avatar_dir, expected_new_filename))
+
+    monkeypatch.setattr(db.session, 'commit', original_commit)
+
+
+def test_change_password_rejects_duplicate_old_password(client):
+    client.post('/api/auth/register', json={
+        'name': 'Duplicate Password User',
+        'email': 'dup-pass@gmail.com',
+        'password': '***',
+        'captcha_token': TEST_CAPTCHA
+    })
+    login_res = client.post('/api/auth/login', json={
+        'email': 'dup-pass@gmail.com',
+        'password': '***',
+        'captcha_token': TEST_CAPTCHA
+    })
+    token = login_res.json['access_token']
+
+    res = client.put(
+        '/api/users/me/password',
+        json={'current_password': '***', 'new_password': '***'},
+        headers={'Authorization': f'Bearer {token}'},
+    )
+    assert res.status_code == 400
+    assert 'trùng' in res.json['message']
+
+
+def test_remove_avatar_success_deletes_owned_file(client):
+    client.post('/api/auth/register', json={
+        'name': 'Remove Avatar User',
+        'email': 'remove-avatar@gmail.com',
+        'password': '***',
+        'captcha_token': TEST_CAPTCHA
+    })
+    login_res = client.post('/api/auth/login', json={
+        'email': 'remove-avatar@gmail.com',
+        'password': '***',
+        'captcha_token': TEST_CAPTCHA
+    })
+    token = login_res.json['access_token']
+    uploaded = client.post(
+        '/api/users/me/avatar',
+        data={'avatar': (io.BytesIO(make_png_bytes()), 'remove.png')},
+        headers={'Authorization': f'Bearer {token}'},
+    )
+    filename = uploaded.json['user']['avatar'].split('/')[-1]
+    avatar_path = os.path.join(user_routes.AVATAR_UPLOAD_DIR, filename)
+
+    removed = client.delete(
+        '/api/users/me/avatar',
+        headers={'Authorization': f'Bearer {token}'},
+    )
+    profile = client.get(
+        '/api/users/me',
+        headers={'Authorization': f'Bearer {token}'},
+    )
+
+    assert uploaded.status_code == 200
+    assert removed.status_code == 200
+    assert removed.json['user']['avatar'] is None
+    assert profile.status_code == 200
+    assert profile.json['user']['avatar'] is None
+    assert not os.path.exists(avatar_path)
+
+
+def test_remove_avatar_requires_authentication(client):
+    res = client.delete('/api/users/me/avatar')
+    assert res.status_code == 401
+
+
+def test_remove_avatar_without_existing_avatar_succeeds(client):
+    client.post('/api/auth/register', json={
+        'name': 'No Avatar User',
+        'email': 'no-avatar@gmail.com',
+        'password': '***',
+        'captcha_token': TEST_CAPTCHA
+    })
+    login_res = client.post('/api/auth/login', json={
+        'email': 'no-avatar@gmail.com',
+        'password': '***',
+        'captcha_token': TEST_CAPTCHA
+    })
+    res = client.delete(
+        '/api/users/me/avatar',
+        headers={'Authorization': f'Bearer {login_res.json["access_token"]}'},
+    )
+    assert res.status_code == 200
+    assert res.json['user']['avatar'] is None
+
+
+def test_remove_avatar_does_not_delete_another_users_file(client):
+    from models.user import User
+
+    for name, email in [('Owner', 'avatar-owner@gmail.com'), ('Other', 'avatar-other@gmail.com')]:
+        client.post('/api/auth/register', json={
+            'name': name,
+            'email': email,
+            'password': '***',
+            'captcha_token': TEST_CAPTCHA
+        })
+    owner_login = client.post('/api/auth/login', json={
+        'email': 'avatar-owner@gmail.com',
+        'password': '***',
+        'captcha_token': TEST_CAPTCHA
+    })
+    other = db.session.query(User).filter_by(email='avatar-other@gmail.com').first()
+    avatar_dir = user_routes.AVATAR_UPLOAD_DIR
+    os.makedirs(avatar_dir, exist_ok=True)
+    other_filename = f'u{other.id}-protected.png'
+    other_path = os.path.join(avatar_dir, other_filename)
+    with open(other_path, 'wb') as avatar_file:
+        avatar_file.write(make_png_bytes())
+    owner = db.session.query(User).filter_by(email='avatar-owner@gmail.com').first()
+    owner.avatar = f'/api/uploads/avatars/{other_filename}'
+    db.session.commit()
+
+    try:
+        res = client.delete(
+            '/api/users/me/avatar',
+            headers={'Authorization': f'Bearer {owner_login.json["access_token"]}'},
+        )
+
+        assert res.status_code == 200
+        assert res.json['user']['avatar'] is None
+        assert os.path.exists(other_path)
+    finally:
+        if os.path.exists(other_path):
+            os.remove(other_path)
+--- HẾT ---
+=== FILE SOURCE 5: frontend/src/features/profile/hooks.ts ===
+--- FILE: frontend/src/features/profile/hooks.ts ---
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { User } from "../../domain/types";
+import { useApp } from "../../lib/store";
+import { useAuth } from "../auth/AuthProvider";
+import {
+  profileDataSource,
+  type EditableProfile,
+  type ProfileUpdateResult,
+} from "./dataSource";
+
+function messageOf(error: unknown) {
+  return error instanceof Error
+    ? error.message
+    : "Your profile could not be loaded.";
+}
+
+function hasMeaningfulProfileDiff(current: User | null, next: User): boolean {
+  if (!current) return true;
+
+  const currentFavoriteFandoms = current.favorite_fandoms ?? [];
+  const nextFavoriteFandoms = next.favorite_fandoms ?? [];
+  const currentDisplayPreferences = current.display_preferences ?? {};
+  const nextDisplayPreferences = next.display_preferences ?? {};
+
+  return (
+    current.name !== next.name ||
+    (current.avatar ?? null) !== (next.avatar ?? null) ||
+    current.status !== next.status ||
+    JSON.stringify(currentFavoriteFandoms) !==
+      JSON.stringify(nextFavoriteFandoms) ||
+    JSON.stringify(currentDisplayPreferences) !==
+      JSON.stringify(nextDisplayPreferences)
+  );
+}
+
+export function useProfileSettings() {
+  const { user, adoptUser } = useAuth();
+  const { setDb } = useApp();
+  const [profile, setProfile] = useState<User | null>(user);
+  const [loading, setLoading] = useState(Boolean(user));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const lastFetchedUserIdRef = useRef<number | string | null>(null);
+
+  const load = useCallback(
+    async (signal?: AbortSignal) => {
+      if (!user) {
+        setProfile(null);
+        setLoading(false);
+        setError("");
+        return null;
+      }
+
+      setLoading(true);
+      setError("");
+      try {
+        const next = await profileDataSource.current(user, signal);
+        if (signal?.aborted) return null;
+
+        setProfile(next);
+
+        if (hasMeaningfulProfileDiff(user, next)) {
+          adoptUser(next);
+        }
+
+        return next;
+      } catch (cause) {
+        if (!signal?.aborted) setError(messageOf(cause));
+        return null;
+      } finally {
+        if (!signal?.aborted) setLoading(false);
+      }
+    },
+    [user, adoptUser],
+  );
+
+  useEffect(() => {
+    if (!user) {
+      lastFetchedUserIdRef.current = null;
+      setProfile(null);
+      setLoading(false);
+      setError("");
+      return;
+    }
+
+    if (
+      lastFetchedUserIdRef.current === user.id &&
+      profile &&
+      profile.id === user.id
+    ) {
+      setLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    let completed = false;
+    const request = load(controller.signal);
+    void request.then((next) => {
+      if (!controller.signal.aborted && next) {
+        lastFetchedUserIdRef.current = user.id;
+        completed = true;
+      }
+    });
+
+    return () => {
+      controller.abort();
+      if (!completed) {
+        if (lastFetchedUserIdRef.current === user.id) {
+          lastFetchedUserIdRef.current = null;
+        }
+        setLoading(false);
+      }
+    };
+  }, [user?.id, load, profile]);
+
+  const save = useCallback(
+    async (input: EditableProfile): Promise<ProfileUpdateResult> => {
+      const current = profile || user;
+      if (!current) throw new Error("Please sign in to edit your profile.");
+
+      setSaving(true);
+      setError("");
+      try {
+        const result = await profileDataSource.update(current, input);
+        if (result.legacyDb) setDb(result.legacyDb);
+        setProfile(result.user);
+        adoptUser(result.user);
+        return result;
+      } catch (cause) {
+        setError(messageOf(cause));
+        throw cause;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [profile, user?.id, adoptUser, setDb],
+  );
+
+  const adoptProfile = useCallback(
+    (next: User) => {
+      setProfile(next);
+      adoptUser(next);
+    },
+    [adoptUser],
+  );
+
+  return {
+    profile,
+    loading,
+    saving,
+    error,
+    reload: load,
+    save,
+    adoptProfile,
+  };
+}
+--- HẾT ---
+=== FILE SOURCE 6: frontend/src/features/auth/api.ts ===
+--- FILE: frontend/src/features/auth/api.ts ---
+﻿import type { User } from "../../domain/types";
+import {
+  apiClient,
+  setTokens,
+  getRefreshToken,
+  clearTokens,
+} from "../../shared/http/client";
+
+export interface RegisterRequest {
+  name: string;
+  email: string;
+  password: string;
+  captcha_token: string;
+}
+
+export interface RegisterResponse {
+  user: User;
+  message: string;
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+  captcha_token: string;
+}
+
+export const authApi = {
+  async me(signal?: AbortSignal): Promise<{ user: User | null }> {
+    const res = await apiClient.get<any>("/auth/me", { signal });
+    return { user: res?.user || res || null };
+  },
+
+  async login(
+    email: string,
+    password: string,
+    // TẠM THỜI: dùng token test cố định vì UI captcha đang bị ẩn.
+    // Khi triển khai captcha thật, xóa giá trị mặc định này và bắt
+    // buộc truyền captchaToken thật từ widget vào.
+    captchaToken: string = "***",
+  ) {
+    const result = await apiClient.post<any>("/auth/login", {
+      email,
+      password,
+      captcha_token: captchaToken,
+    });
+    if (result?.access_token) {
+      // Save both tokens — refresh_token uses Rotation, must always save new value
+      setTokens(result.access_token, result.refresh_token);
+    }
+    return { user: result.user as User };
+  },
+
+  // CHƯA CÓ Ở BACKEND — endpoint /auth/verify và /auth/resend-verification
+  // hiện KHÔNG tồn tại trong backend thật (xác nhận qua scan route).
+  // Gọi các hàm này ở thời điểm hiện tại sẽ luôn nhận 404.
+  async verify(email: string, code: string) {
+    const result = await apiClient.post<{ user?: User; message?: string }>(
+      "/auth/verify",
+      {
+        email,
+        code,
+      },
+    );
+    return {
+      user: result.user as User | undefined,
+      message: result.message ?? "",
+    };
+  },
+
+  // CHƯA CÓ Ở BACKEND — endpoint /auth/verify và /auth/resend-verification
+  // hiện KHÔNG tồn tại trong backend thật (xác nhận qua scan route).
+  // Gọi các hàm này ở thời điểm hiện tại sẽ luôn nhận 404.
+  async resendVerification(email: string) {
+    const result = await apiClient.post<{
+      emailSent: boolean;
+      devOtp?: string;
+    }>("/auth/resend-verification", {
+      email,
+    });
+    return {
+      emailSent: Boolean(result.emailSent),
+      devOtp: result.devOtp ?? null,
+    };
+  },
+
+  async register(input: RegisterRequest): Promise<RegisterResponse> {
+    const result = await apiClient.post<any>("/auth/register", {
+      name: input.name,
+      email: input.email,
+      password: input.password,
+      captcha_token: input.captcha_token,
+    });
+    return {
+      user: result.user as User,
+      message: result.message ?? "",
+    };
+  },
+
+  async logout() {
+    try {
+      const refreshToken = getRefreshToken();
+      await apiClient.post<{ message: string }>("/auth/logout", {
+        refresh_token: refreshToken,
+      });
+    } catch {
+      // Ignore logout request error — always clear local tokens
+    } finally {
+      clearTokens();
+    }
+    return { ok: true };
+  },
+};
+--- HẾT ---
+=== 4. KẾT QUẢ KIỂM TRA PASS/FAIL ===
+PASS - pytest tests -q (backend), output nguyên văn:
+```text
+..............................                                           [100%]
+============================== warnings summary ===============================
+tests/test_auth.py: 7 warnings
+tests/test_feedback.py: 11 warnings
+tests/test_user.py: 81 warnings
+  C:\Users\PC\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\sql\schema.py:3627: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    return util.wrap_callable(lambda ctx: fn(), fn)  # type: ignore
+
+tests/test_auth.py: 1 warning
+tests/test_feedback.py: 3 warnings
+tests/test_user.py: 23 warnings
+  C:\xampp\htdocs\FanPlus\Fan-Plus\backend\utils\jwt_utils.py:15: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    'iat': datetime.utcnow(),
+
+tests/test_auth.py: 1 warning
+tests/test_feedback.py: 3 warnings
+tests/test_user.py: 23 warnings
+  C:\xampp\htdocs\FanPlus\Fan-Plus\backend\utils\jwt_utils.py:16: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    'exp': datetime.utcnow() + timedelta(seconds=expires_in_seconds)
+
+tests/test_auth.py: 1 warning
+tests/test_feedback.py: 3 warnings
+tests/test_user.py: 20 warnings
+  C:\Users\PC\AppData\Local\Programs\Python\Python313\Lib\site-packages\jwt\api_jwt.py:149: InsecureKeyLengthWarning: The HMAC key is 31 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+    return self._jws.encode(
+
+tests/test_auth.py: 1 warning
+tests/test_feedback.py: 3 warnings
+tests/test_user.py: 23 warnings
+  C:\xampp\htdocs\FanPlus\Fan-Plus\backend\utils\jwt_utils.py:34: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    expires_at = datetime.utcnow() + timedelta(seconds=expires_in_seconds)
+
+tests/test_feedback.py: 3 warnings
+tests/test_user.py: 20 warnings
+  C:\Users\PC\AppData\Local\Programs\Python\Python313\Lib\site-packages\jwt\api_jwt.py:370: InsecureKeyLengthWarning: The HMAC key is 31 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+    decoded = self.decode_complete(
+
+tests/test_feedback.py: 3 warnings
+tests/test_user.py: 28 warnings
+  C:\xampp\htdocs\FanPlus\Fan-Plus\backend\middleware\auth_middleware.py:20: LegacyAPIWarning: The Query.get() method is considered legacy as of the 1.x series of SQLAlchemy and becomes a legacy construct in 2.0. The method is now available as Session.get() (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    user = User.query.get(user_id)
+
+tests/test_user.py::test_change_password_and_invalidate_refresh_tokens
+tests/test_user.py::test_change_password_accepts_trailing_space_and_relogin_with_exact_string
+  C:\xampp\htdocs\FanPlus\Fan-Plus\backend\crud\auth_crud.py:58: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    token_record.revoked_at = datetime.utcnow()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+30 passed, 260 warnings in 22.30s
+```
+
+PASS - npx tsc --noEmit, exit code 0. stdout/stderr rỗng.
+
+PASS - npm test, exit code 0, output nguyên văn:
+```text
+
+> fan-hub-plus-frontend@0.1.0 test
+> node --test tests/*.test.mjs
+
+✔ admin demo data source gates workspace loading to an administrator (501.1028ms)
+✔ admin content edit and account-status mutations reconcile through the data source (678.7069ms)
+✔ legacy gateway is removed and Community no longer imports it (4.2349ms)
+✔ optimistic bookmark helpers update and roll back only the target content (9.2269ms)
+✔ demo reading list add/remove is idempotent and returns content payloads (494.3669ms)
+✔ demo private reading-list note stays inside the bookmark data source (505.0706ms)
+✔ profile data source fetch/update keeps demo profile behavior behind the feature boundary (327.6735ms)
+✔ demo content detail resolves visible content, related items and empty member-rating state (6.0046ms)
+✔ demo content detail returns 404 semantics for an unavailable id (1.5888ms)
+✔ optimistic member rating updates average without inflating count on replacement (0.527ms)
+✔ demo rating persists and is restored by a later detail fetch (335.45ms)
+✔ seed has 8 distinct categories and 24 original published entries (1.1044ms)
+✔ combined filters are conjunctive (0.4496ms)
+✔ search is case-insensitive and accent-insensitive (0.9131ms)
+✔ search applies every query token (0.2324ms)
+✔ draft entries never appear in public filtering (17.2155ms)
+✔ pagination clamps invalid or out-of-range page numbers (1.3916ms)
+✔ popular filter applies the documented demo threshold (0.2858ms)
+✔ alphabetical and popularity sorting are stable (4.9514ms)
+✔ media filter accepts multiple media types (0.7615ms)
+✔ distance is zero for identical points and symmetric (0.7586ms)
+✔ unsafe outbound URLs and credential-bearing URLs are rejected (0.3121ms)
+✔ return paths reject external origins and backslashes (0.2654ms)
+✔ recommendations exclude saved content and provide an explicit reason (0.5318ms)
+✔ all 8 categories have a fictional release fixture, including merchandise (0.2361ms)
+✔ calendar export uses UTC, escapes punctuation and marks demo (1.0871ms)
+✔ calendar lines fold safely at UTF-8 byte boundaries (2.6821ms)
+✔ content validation rejects invalid title, year and media scheme (0.3714ms)
+✔ published seed IDs referenced by category are valid (0.2988ms)
+✔ event optimistic helper updates only the selected event and can roll back (174.7955ms)
+✔ demo event join is persisted per user and remains idempotent (170.8207ms)
+✔ giveaway optimistic entry immediately exposes joined state without duplicating an existing entry (172.5318ms)
+✔ demo giveaway entry reconciles to an authoritative ticket and is idempotent (183.72ms)
+✔ Calendar quarters use Vietnam midnight and a 20:00 first-day draw (5.1343ms)
+✔ Native WebCrypto SHA-256 and HMAC ranking match Node independent implementation (36.9714ms)
+✔ Guest is gated and pending post is not public (5.1687ms)
+✔ Post validation {"title":"a"} (0.4438ms)
+✔ Post validation {"body":"x"} (0.3719ms)
+✔ Post validation {"topic":"other"} (0.2905ms)
+✔ Post validation {"rating":6} (0.3718ms)
+✔ Post validation {"rating":1.5} (0.2209ms)
+✔ Post validation {"subject":""} (0.2198ms)
+✔ All requested community categories and moderated media post types are supported (2.0545ms)
+✔ Administrator posts publish immediately; duplicate review is rejected (1.2805ms)
+✔ Edits return to moderation and enforce author/version (1.2898ms)
+✔ One reaction per user, replacement, unreact and guest block (1.0927ms)
+✔ Comments enforce reply parent scope/depth and soft deletion (1.3165ms)
+✔ Reports are private, unique while open, and moderatable (0.9675ms)
+✔ Lore Gojo reply discloses a sample and not LLM (389.0129ms)
+✔ Unknown film is not answered using an unrelated sample (395.5093ms)
+✔ Lore topic and spoiler filters are applied before selection (777.3928ms)
+✔ Chat history is scoped and can be cleared (0.3992ms)
+✔ Entry is free/explicit/idempotent and admin cannot enter (2.476ms)
+✔ Empty draw is blocked and lock forbids additional entries (3.7353ms)
+✔ Draw saves once, awards unique tickets, verifies all ranks and rejects tampering (5.7279ms)
+✔ One entrant receives one prize, not three (1.264ms)
+✔ Product source contains no emoji pictographs (30.7223ms)
+✔ HTTP serves application shell (265.5092ms)
+✔ HTTP supports deep SPA links (5.7481ms)
+✔ HTTP JavaScript has executable MIME type (2.761ms)
+✔ HTTP missing asset is a 404, not application HTML (4.4794ms)
+✔ HTTP read-only preview rejects POST (8.6614ms)
+✔ HTTP rejects malformed percent encoding (2.4834ms)
+✔ HTTP serves partial local video bytes (6.642ms)
+✔ HTTP serves suffix byte range (5.3113ms)
+✔ HTTP rejects unsatisfiable range (2.9963ms)
+✔ HTTP HEAD sends headers without a body (6.3046ms)
+✔ HTTP serves a valid caption file (4.4532ms)
+✔ HTTP supplies CSP, no-sniff and referrer controls (4.0314ms)
+✔ Lore message helpers append optimistic user and authoritative assistant messages in order (2.5135ms)
+✔ Demo Lore data source reports sample-library mode and persists conversation history (561.3584ms)
+✔ Demo Lore source lookup enforces published source semantics (1.1227ms)
+✔ Lore service mode labels stay presentation-safe (0.3334ms)
+✔ visitor cannot bookmark and a member cannot mutate admin content (507.184ms)
+✔ wrong password rejected; correct member session recognized (391.5915ms)
+✔ bookmark toggle is unique and per user; private note ownership enforced (1199.8417ms)
+✔ rating is an upsert per user and published content only (832.845ms)
+✔ fan submission remains private until approval and cannot be reviewed twice (849.7944ms)
+✔ rejection requires a reason (832.5659ms)
+✔ deleting content cleans up related notes, ratings and reading activity (835.4466ms)
+✔ in-use categories cannot be deleted; empty categories can be removed (668.8442ms)
+✔ admin cannot suspend self; suspended member cannot log in (663.3104ms)
+✔ registration stores no plaintext password and supports a same-tab sign-in (332.5124ms)
+✔ reset token is single-use and changes the local password (852.1169ms)
+✔ reset token expires (330.2642ms)
+✔ event editor rejects unsafe URL, invalid dates and invalid coordinates (666.6309ms)
+✔ feedback can be submitted as visitor and resolved by admin (499.5373ms)
+✔ local FAQ edits persist through repository reload (497.0717ms)
+✔ corrupt demo storage recovers to seed data (169.3294ms)
+✔ unavailable storage returns a user-readable error (326.7232ms)
+ℹ tests 90
+ℹ suites 0
+ℹ pass 90
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11198.6092
+```
+
+PASS - NODE_OPTIONS=--max-old-space-size=4096 npm run build, exit code 0, output nguyên văn:
+```text
+
+> fan-hub-plus-frontend@0.1.0 build
+> tsc --noEmit && vite build --outDir dist-vite
+
+vite v7.3.6 building client environment for production...
+transforming...
+✓ 96 modules transformed.
+rendering chunks...
+computing gzip size...
+dist-vite/index.html                           0.70 kB │ gzip:  0.43 kB
+dist-vite/assets/index-CXPMBiD1.css          116.44 kB │ gzip: 23.06 kB
+dist-vite/assets/api-BbfZvl3Q.js               1.68 kB │ gzip:  0.68 kB
+dist-vite/assets/dataSource-CjrSP-EV.js        1.74 kB │ gzip:  0.86 kB
+dist-vite/assets/Releases-CKyifZnD.js          2.18 kB │ gzip:  1.00 kB
+dist-vite/assets/MemberProfile-BuL4NlV3.js     2.55 kB │ gzip:  1.08 kB
+dist-vite/assets/ResourceDetail-Dc8v4y4C.js    3.00 kB │ gzip:  1.21 kB
+dist-vite/assets/Categories-DQeZUGoX.js        3.61 kB │ gzip:  1.41 kB
+dist-vite/assets/Home-BzlFFpi1.js              6.76 kB │ gzip:  2.10 kB
+dist-vite/assets/Characters-CWnVZKiz.js        6.88 kB │ gzip:  2.48 kB
+dist-vite/assets/Explore-B4t7UzVz.js           7.96 kB │ gzip:  2.76 kB
+dist-vite/assets/Utility-CFysrOAn.js           8.33 kB │ gzip:  3.37 kB
+dist-vite/assets/hooks-DOhlbgDH.js             8.64 kB │ gzip:  3.49 kB
+dist-vite/assets/Auth-DtH_EqNG.js              9.34 kB │ gzip:  3.26 kB
+dist-vite/assets/Merchandise-C_xViyvp.js       9.54 kB │ gzip:  3.03 kB
+dist-vite/assets/Detail-Bk1mlsL9.js            9.81 kB │ gzip:  3.48 kB
+dist-vite/assets/Events-8W9mHNWD.js           15.45 kB │ gzip:  5.55 kB
+dist-vite/assets/Giveaways-Di9Jxth6.js        21.18 kB │ gzip:  6.82 kB
+dist-vite/assets/Account-CBBu9Ij0.js          21.24 kB │ gzip:  6.79 kB
+dist-vite/assets/Admin-Ds2nKhba.js            26.89 kB │ gzip:  7.14 kB
+dist-vite/assets/Community-TGu3YrgF.js        31.78 kB │ gzip:  9.68 kB
+dist-vite/assets/index-C1wYasgz.js           291.66 kB │ gzip: 93.77 kB
+✓ built in 1.76s
+[plugin vite:reporter] 
+(!) C:/xampp/htdocs/FanPlus/Fan-Plus/frontend/src/features/Lore.tsx is dynamically imported by C:/xampp/htdocs/FanPlus/Fan-Plus/frontend/src/App.tsx, C:/xampp/htdocs/FanPlus/Fan-Plus/frontend/src/App.tsx but also statically imported by C:/xampp/htdocs/FanPlus/Fan-Plus/frontend/src/components/Layout.tsx, dynamic import will not move module into another chunk.
+```
+
+PASS - Live MySQL/Flask requests script, output (không in token/mật khẩu):
+```text
+REGISTER 201
+LOGIN 200
+GET_PROFILE_BEFORE 200
+FAVORITE_FANDOMS_BEFORE []
+PUT_PROFILE 200 Cập nhật hồ sơ cá nhân thành công
+GET_PROFILE_AFTER_PUT 200
+FAVORITE_FANDOMS ['Anime', 'Manga']
+PREFERENCES {'favoriteCategories': ['anime'], 'font_size': 'medium', 'theme': 'dark'}
+UPLOAD_AVATAR 200 Tải ảnh đại diện thành công
+GET_AVATAR 200 image/png
+DELETE_AVATAR 200 Xóa ảnh đại diện thành công
+GET_PROFILE_AFTER_DELETE 200 avatar= None
+AVATAR_FILE_CLEANUP PASS
+DISPOSABLE_USER_ROWS_AFTER_CLEANUP 0
+```
+Script tạo user có email ngẫu nhiên để kiểm tra, rồi xóa refresh token, user và ảnh đúng của account disposable. Không có schema nào bị thay đổi.
+
+PASS - MySQL read-only check:
+```text
+favorite_fandoms_column_present True
+categories_count 0
+characters_count 0
+```
+
+PASS - `test_update_profile_rejects_foreign_avatar_url_and_keeps_owner_file` xác nhận PUT không nhận avatar của user khác, giữ nguyên file đó.
+PASS - Upload test fixture monkeypatch cả path upload và path GET static về tmp_path; test không ghi/xóa trong backend/uploads/avatars.
+PASS - `Confirm` auto-close được xác nhận từ finally; không sửa file này.
+PASS - `React.StrictMode` được xác nhận tại frontend/src/main.tsx.
+
+=== 5. TỒN ĐỌNG VÀ MỨC CHẮC CHẮN ===
+- CHẮC CHẮN: không chạy hay sửa schema MySQL trong lượt này; người dùng đã thêm favorite_fandoms trước đó.
+- CHẮC CHẮN: categories và characters hiện đều có 0 rows theo SELECT COUNT(*).
+- CHẮC CHẮN: FK lỗi merchandise khai báo characters.character_id nhưng schema legacy được ghi trong report trước dùng characters.id; model Category.category_id và MerchandiseItem.category_id đều là Integer/INT.
+- KHẢ NĂNG CAO: StrictMode race gây loading mắc kẹt do ref được đánh dấu trước khi request thành công; ref mới chỉ ghi sau fetch thành công và được xóa khi request bị cleanup/abort.
+- CHẮC CHẮN: `BACKEND_HANDOFF.md` không có trong workspace theo kiểm tra tại lượt trước; file này không được sửa.
+
+=== MODEL NGUYÊN VĂN DÙNG ĐỐI CHIẾU ERRNO 150 ===
+--- FILE: backend/models/character.py ---
+from datetime import datetime, timezone
+
+from extensions import db
+
+
+class Character(db.Model):
+    __tablename__ = "characters"
+
+    character_id = db.Column(
+        db.Integer,
+        primary_key=True,
+        autoincrement=True
+    )
+
+    category_id = db.Column(
+        db.Integer,
+        db.ForeignKey("categories.category_id"),
+        nullable=False
+    )
+
+    name = db.Column(
+        db.String(150),
+        nullable=False
+    )
+
+    bio = db.Column(
+        db.Text,
+        nullable=True
+    )
+
+    image_url = db.Column(
+        db.String(500),
+        nullable=True
+    )
+
+    created_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc)
+    )
+
+    updated_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc)
+    )
+
+    category = db.relationship(
+        "Category",
+        back_populates="characters"
+    )
+
+    character_contents = db.relationship(
+        "CharacterContent",
+        back_populates="character"
+    )
+
+    merchandise_items = db.relationship(
+        "MerchandiseItem",
+        backref="character"
+    )
+
+    def to_dict(self):
+        return {
+            "character_id": self.character_id,
+            "category_id": self.category_id,
+            "name": self.name,
+            "bio": self.bio,
+            "image_url": self.image_url
+        }
+--- HẾT ---
+--- FILE: backend/models/category.py ---
+from extensions import db
+
+class Category(db.Model):
+    __tablename__ = 'categories'
+
+    category_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    name = db.Column(db.String(100), nullable=False, unique=True)
+    description = db.Column(db.Text, nullable=True)
+
+    characters = db.relationship('Character', back_populates='category')
+    merchandise_items = db.relationship('MerchandiseItem', backref='category')
+--- HẾT ---
+--- FILE: backend/models/merchandise_item.py ---
+from datetime import datetime
+from extensions import db
+
+class MerchandiseItem(db.Model):
+    __tablename__ = 'merchandise_items'
+
+    item_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    category_id = db.Column(db.Integer, db.ForeignKey('categories.category_id'), nullable=False)
+    character_id = db.Column(db.Integer, db.ForeignKey('characters.character_id', ondelete='SET NULL'), nullable=True)
+    name = db.Column(db.String(200), nullable=False)
+    image_url = db.Column(db.String(500), nullable=True)
+    tag = db.Column(db.String(50), nullable=True)
+    is_upcoming = db.Column(db.Boolean, default=False)
+    view_count = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+--- HẾT ---
+
+=== 6. LỆNH TÔI CẦN TỰ CHẠY ===
+Không có lệnh bắt buộc cho avatar/profile: các test SQLite và live API flow đã chạy thành công; test user disposable đã được dọn. favorite_fandoms column do người dùng đã thêm, không chạy ALTER lần nữa.
+
+Đối với errno 150, không chạy lệnh này trước khi rà soát FK/ứng dụng tham chiếu tới characters.id. Đây chỉ là một phương án schema cần review, KHÔNG được thực hiện trong lượt này:
+```sql
+ALTER TABLE characters CHANGE COLUMN id character_id INT(11) NOT NULL AUTO_INCREMENT;
+```
+Lệnh trên chỉ phù hợp nếu mọi consumer/FK cũ chấp nhận đổi tên PK; phương án ít rủi ro hơn có thể là map model Character.character_id sang cột DB id và đổi MerchandiseItem FK sang characters.id. Bảng legacy còn khác model ở một số cột khác, nên cần so sánh SHOW CREATE TABLE trước khi quyết định. Không có DROP/ALTER nào khác được chạy.
+

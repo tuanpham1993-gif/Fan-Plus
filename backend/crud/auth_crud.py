@@ -46,3 +46,14 @@ def revoke_refresh_token_record(token_record):
         token_record.revoked_at = datetime.utcnow()
         db.session.commit()
     return token_record
+
+
+def revoke_all_refresh_tokens_for_user(user):
+    if not user:
+        return []
+
+    token_records = db.session.query(RefreshToken).filter_by(user_id=user.id).all()
+    for token_record in token_records:
+        if token_record.revoked_at is None:
+            token_record.revoked_at = datetime.utcnow()
+    return token_records

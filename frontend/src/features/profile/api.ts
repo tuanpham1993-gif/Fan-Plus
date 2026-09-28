@@ -1,6 +1,6 @@
 import type { User } from "../../domain/types";
 import type { PublicProfile } from "../types";
-import { apiClient } from "../../shared/http/client";
+import { ApiError, api, apiClient } from "../../shared/http/client";
 
 export interface ProfileServerPatch {
   name?: string;
@@ -17,6 +17,30 @@ export const profileApi = {
     apiClient.put<{ message?: string; user: User }>("/users/me", patch, {
       signal,
     }),
+
+  async uploadAvatar(file: File): Promise<User> {
+    const form = new FormData();
+    form.append("avatar", file);
+    try {
+      const response = await api<{ message?: string; user: User }>(
+        "/users/me/avatar",
+        { method: "POST", body: form },
+      );
+      return response.user;
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 413) {
+        throw new ApiError("Ảnh quá lớn, tối đa 2MB", 413);
+      }
+      throw error;
+    }
+  },
+
+  async removeAvatar(): Promise<User> {
+    const response = await apiClient.delete<{ message?: string; user: User }>(
+      "/users/me/avatar",
+    );
+    return response.user;
+  },
 
   publicProfile: (id: string, signal?: AbortSignal) =>
     apiClient.get<PublicProfile>(`/users/${encodeURIComponent(id)}`, {

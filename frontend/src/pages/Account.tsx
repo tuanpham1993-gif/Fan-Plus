@@ -6,7 +6,8 @@ import { useBookmarks } from "../features/bookmarks/BookmarksProvider";
 import type { ContentBookmarkItem } from "../features/bookmarks/api";
 import { useHomeCatalog } from "../features/catalog/hooks";
 import { FANDOM_CATEGORIES, categoryLabel } from "../shared/catalog/taxonomy";
-import { serverMode } from "../shared/http/client";
+import { resolveAvatarUrl, serverMode } from "../shared/http/client";
+import { profileApi } from "../features/profile/api";
 import { Link, navigate, currentPath } from "../lib/router";
 import { repository } from "../services/repository";
 import type { Feedback } from "../domain/types";
@@ -357,6 +358,7 @@ function Profile() {
     saving,
     error: profileError,
     save,
+    adoptProfile,
   } = useProfileSettings();
   const {
     status: bookmarkStatus,
@@ -375,7 +377,9 @@ function Profile() {
   const [name, setName] = useState(user?.name || "");
   const [cats, setCats] = useState(favoriteCategories);
   const [fandoms, setFandoms] = useState(favoriteFandoms.join(", "));
-  const [avatar, setAvatar] = useState(user?.avatar || "");
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const [avatarBroken, setAvatarBroken] = useState(false);
+  const [removeAvatarOpen, setRemoveAvatarOpen] = useState(false);
   const [reset, setReset] = useState(false);
 
   useEffect(() => {
@@ -383,46 +387,57 @@ function Profile() {
     setName(user.name);
     setCats(favoriteCategories);
     setFandoms(favoriteFandoms.join(", "));
-    setAvatar(user.avatar || "");
   }, [
     user?.id,
     user?.name,
-    user?.avatar,
     user?.favorite_fandoms?.join("|"),
     JSON.stringify(user?.display_preferences ?? {}),
   ]);
 
+  useEffect(() => {
+    setAvatarBroken(false);
+  }, [user?.avatar]);
+
   const upload = async (file?: File) => {
-    if (!file) return;
+    if (!file || avatarBusy) return;
     if (
       !["image/png", "image/jpeg", "image/webp"].includes(file.type) ||
       file.size > 2 * 1024 * 1024
     ) {
-      notify("Choose a PNG, JPEG or WebP smaller than 2 MB.", "error");
+      notify("Chọn ảnh PNG, JPEG hoặc WebP không quá 2MB.", "error");
       return;
     }
+    setAvatarBusy(true);
     try {
-      const bitmap = await createImageBitmap(file);
-      const canvas = document.createElement("canvas");
-      canvas.width = canvas.height = 160;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) throw new Error("Image processing unavailable.");
-      const side = Math.min(bitmap.width, bitmap.height);
-      ctx.drawImage(
-        bitmap,
-        (bitmap.width - side) / 2,
-        (bitmap.height - side) / 2,
-        side,
-        side,
-        0,
-        0,
-        160,
-        160,
+      const updatedUser = await profileApi.uploadAvatar(file);
+      adoptProfile(updatedUser);
+      setAvatarBroken(false);
+      notify("Ảnh đại diện đã được cập nhật.");
+    } catch (cause) {
+      notify(
+        cause instanceof Error ? cause.message : "Không thể tải ảnh lên.",
+        "error",
       );
-      bitmap.close();
-      setAvatar(canvas.toDataURL("image/webp", 0.8));
-    } catch {
-      notify("This image could not be opened. Try another file.", "error");
+    } finally {
+      setAvatarBusy(false);
+    }
+  };
+
+  const removeAvatar = async () => {
+    if (avatarBusy) return;
+    setAvatarBusy(true);
+    try {
+      const updatedUser = await profileApi.removeAvatar();
+      adoptProfile(updatedUser);
+      setAvatarBroken(false);
+      notify("Ảnh đại diện đã được xóa.");
+    } catch (cause) {
+      notify(
+        cause instanceof Error ? cause.message : "Không thể xóa ảnh đại diện.",
+        "error",
+      );
+    } finally {
+      setAvatarBusy(false);
     }
   };
 
@@ -476,7 +491,6 @@ function Profile() {
             try {
               const result = await save({
                 name,
-                avatar,
                 favorite_fandoms: fandoms
                   .split(",")
                   .map((value) => value.trim())
@@ -519,8 +533,12 @@ function Profile() {
 
           <div className="profile-identity">
             <div className="profile-avatar">
-              {avatar ? (
-                <img src={avatar} alt="Your avatar" />
+              {user.avatar && !avatarBroken ? (
+                <img
+                  src={resolveAvatarUrl(user.avatar)}
+                  alt={`Ảnh đại diện của ${user.name}`}
+                  onError={() => setAvatarBroken(true)}
+                />
               ) : (
                 user.name.slice(0, 1)
               )}
@@ -533,14 +551,25 @@ function Profile() {
                 <input
                   type="file"
                   accept="image/png,image/jpeg,image/webp"
-                  onChange={(event) => void upload(event.target.files?.[0])}
+                  disabled={avatarBusy}
+                  onChange={(event) => {
+                    const file = event.currentTarget.files?.[0];
+                    event.currentTarget.value = "";
+                    void upload(file);
+                  }}
                 />
               </label>
-              {avatar && (
+              {avatarBusy && (
+                <p className="muted" role="status">
+                  Đang tải ảnh...
+                </p>
+              )}
+              {user.avatar && (
                 <button
                   className="small-link"
                   type="button"
-                  onClick={() => setAvatar("")}
+                  disabled={avatarBusy}
+                  onClick={() => setRemoveAvatarOpen(true)}
                 >
                   Remove avatar
                 </button>
@@ -709,6 +738,13 @@ function Profile() {
           }}
         />
       )}
+      <Confirm
+        open={removeAvatarOpen}
+        onClose={() => setRemoveAvatarOpen(false)}
+        title="Remove your avatar?"
+        description="Your profile will use your initial until you upload another image."
+        onConfirm={removeAvatar}
+      />
     </>
   );
 }

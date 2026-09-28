@@ -4,27 +4,67 @@ from models.user import User
 from models.bookmark import Bookmark
 from models.content import Content
 
+
 def get_user_by_id(user_id):
     return db.session.query(User).get(user_id)
 
-def update_user_profile(user, name=None, avatar=None, favorite_fandoms=None, display_preferences=None):
+
+def _normalize_favorite_fandoms(favorite_fandoms):
+    if not isinstance(favorite_fandoms, list):
+        raise ValueError('Danh sách fandom không hợp lệ')
+
+    normalized = []
+    seen = set()
+    for fandom in favorite_fandoms:
+        if not isinstance(fandom, str):
+            raise ValueError('Tên fandom không hợp lệ')
+        fandom = fandom.strip()
+        if not fandom:
+            continue
+        if ',' in fandom:
+            raise ValueError('Tên fandom không được chứa dấu phẩy')
+        if len(fandom) > 80:
+            raise ValueError('Mỗi fandom không được dài quá 80 ký tự')
+        normalized_key = fandom.casefold()
+        if normalized_key in seen:
+            continue
+        seen.add(normalized_key)
+        normalized.append(fandom)
+
+    if len(normalized) > 20:
+        raise ValueError('Chỉ được chọn tối đa 20 fandom')
+    return normalized
+
+
+def update_user_profile(user, name=None, favorite_fandoms=None, display_preferences=None):
+    normalized_fandoms = None
+    if favorite_fandoms is not None:
+        normalized_fandoms = _normalize_favorite_fandoms(favorite_fandoms)
+
+    serialized_preferences = None
+    if display_preferences is not None:
+        if not isinstance(display_preferences, dict):
+            raise ValueError('Tùy chọn hiển thị phải là một đối tượng JSON')
+        merged_preferences = user.get_display_preferences().copy()
+        merged_preferences.update(display_preferences)
+        serialized_preferences = json.dumps(
+            merged_preferences,
+            ensure_ascii=False,
+            separators=(',', ':')
+        )
+        if len(serialized_preferences) > 255:
+            raise ValueError('Tùy chọn hiển thị không được vượt quá 255 ký tự')
+
     if name is not None and name.strip():
         user.name = name.strip()
-    if avatar is not None:
-        user.avatar = avatar.strip() if avatar else None
-    if favorite_fandoms is not None:
-        if isinstance(favorite_fandoms, list):
-            user.favorite_fandoms = ','.join(favorite_fandoms)
-        else:
-            user.favorite_fandoms = str(favorite_fandoms).strip()
-    if display_preferences is not None:
-        if isinstance(display_preferences, dict):
-            user.display_preferences = json.dumps(display_preferences)
-        elif isinstance(display_preferences, str):
-            user.display_preferences = display_preferences.strip()
+    if normalized_fandoms is not None:
+        user.favorite_fandoms = ','.join(normalized_fandoms)
+    if serialized_preferences is not None:
+        user.display_preferences = serialized_preferences
 
     db.session.commit()
     return user
+
 
 def get_user_dashboard(user_id):
     user = get_user_by_id(user_id)
