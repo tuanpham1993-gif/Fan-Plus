@@ -1,4 +1,6 @@
 import json
+import re
+from datetime import date
 from extensions import db
 from models.user import User
 from models.bookmark import Bookmark
@@ -36,7 +38,76 @@ def _normalize_favorite_fandoms(favorite_fandoms):
     return normalized
 
 
-def update_user_profile(user, name=None, favorite_fandoms=None, display_preferences=None):
+PERSONAL_FIELDS = ('phone', 'birthday', 'gender', 'city', 'bio')
+PHONE_PATTERN = re.compile(r'^[0-9+\s()\-]+$')
+GENDERS = {'male', 'female', 'other', 'undisclosed'}
+
+
+class ProfileCommitError(Exception):
+    pass
+
+
+def _normalize_personal(personal):
+    if personal is None:
+        return {}
+    if not isinstance(personal, dict):
+        raise ValueError('Thông tin cá nhân không hợp lệ')
+
+    normalized = {}
+    for field in PERSONAL_FIELDS:
+        if field not in personal:
+            continue
+        value = personal[field]
+        if value is None or (isinstance(value, str) and not value.strip()):
+            normalized[field] = None
+            continue
+        if not isinstance(value, str):
+            raise ValueError('Thông tin cá nhân phải là văn bản')
+
+        value = value.strip()
+        if field == 'phone':
+            if not PHONE_PATTERN.fullmatch(value):
+                raise ValueError('Số điện thoại chỉ được chứa chữ số, dấu +, khoảng trắng, dấu gạch ngang và ngoặc đơn')
+            compact_phone = re.sub(r'\s', '', value)
+            digit_count = sum(character.isdigit() for character in value)
+            if not 8 <= len(compact_phone) <= 20 or digit_count < 8:
+                raise ValueError('Số điện thoại phải có từ 8 đến 20 ký tự (không tính khoảng trắng) và ít nhất 8 chữ số')
+            normalized[field] = value
+        elif field == 'birthday':
+            try:
+                if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', value):
+                    raise ValueError
+                birthday = date.fromisoformat(value)
+            except ValueError:
+                raise ValueError('Ngày sinh phải có định dạng YYYY-MM-DD hợp lệ')
+            today = date.today()
+            if birthday > today:
+                raise ValueError('Ngày sinh không được ở tương lai')
+            age = today.year - birthday.year - ((today.month, today.day) < (birthday.month, birthday.day))
+            if age > 120:
+                raise ValueError('Tuổi không được vượt quá 120')
+            normalized[field] = birthday
+        elif field == 'gender':
+            if value not in GENDERS:
+                raise ValueError('Giới tính không hợp lệ')
+            normalized[field] = value
+        elif field == 'city':
+            if len(value) > 100:
+                raise ValueError('Thành phố không được vượt quá 100 ký tự')
+            normalized[field] = value
+        elif field == 'bio':
+            if len(value) > 300:
+                raise ValueError('Giới thiệu bản thân không được vượt quá 300 ký tự')
+            normalized[field] = value
+    return normalized
+
+
+def update_user_profile(user, name=None, favorite_fandoms=None, display_preferences=None, personal=None):
+    if name is not None and not isinstance(name, str):
+        raise ValueError('Tên hiển thị không hợp lệ')
+    if name is not None and name.strip() and len(name.strip()) > 60:
+        raise ValueError('Tên hiển thị không được dài quá 60 ký tự')
+
     normalized_fandoms = None
     if favorite_fandoms is not None:
         normalized_fandoms = _normalize_favorite_fandoms(favorite_fandoms)
@@ -59,14 +130,22 @@ def update_user_profile(user, name=None, favorite_fandoms=None, display_preferen
         if len(serialized_preferences) > 255:
             raise ValueError('Tùy chọn hiển thị không được vượt quá 255 ký tự')
 
+    normalized_personal = _normalize_personal(personal)
+
     if name is not None and name.strip():
         user.name = name.strip()
     if normalized_fandoms is not None:
         user.favorite_fandoms = ','.join(normalized_fandoms)
     if serialized_preferences is not None:
         user.display_preferences = serialized_preferences
+    for field, value in normalized_personal.items():
+        setattr(user, field, value)
 
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        raise ProfileCommitError('Không thể lưu hồ sơ') from exc
     return user
 
 

@@ -7,6 +7,16 @@ export interface ProfileServerPatch {
   avatar?: string | null;
   favorite_fandoms?: string[];
   display_preferences?: Record<string, unknown>;
+  phone?: string | null;
+  birthday?: string | null;
+  gender?: string | null;
+  city?: string | null;
+  bio?: string | null;
+}
+
+export interface PasswordChangeRequest {
+  current_password: string;
+  new_password: string;
 }
 
 export const profileApi = {
@@ -17,6 +27,12 @@ export const profileApi = {
     apiClient.put<{ message?: string; user: User }>("/users/me", patch, {
       signal,
     }),
+
+  changePassword: (input: PasswordChangeRequest) =>
+    apiClient.put<{ message?: string; user: User }>(
+      "/users/me/password",
+      input,
+    ),
 
   async uploadAvatar(file: File): Promise<User> {
     const form = new FormData();
@@ -29,7 +45,7 @@ export const profileApi = {
       return response.user;
     } catch (error) {
       if (error instanceof ApiError && error.status === 413) {
-        throw new ApiError("Ảnh quá lớn, tối đa 2MB", 413);
+        throw new ApiError("Image is too large. Maximum size is 2 MB.", 413);
       }
       throw error;
     }

@@ -75,10 +75,14 @@ def update_user_profile():
             user=g.current_user,
             name=data.get('name'),
             favorite_fandoms=data.get('favorite_fandoms'),
-            display_preferences=data.get('display_preferences')
+            display_preferences=data.get('display_preferences'),
+            personal={key: data[key] for key in ('phone', 'birthday', 'gender', 'city', 'bio') if key in data}
         )
     except ValueError as exc:
         return jsonify({'message': str(exc)}), 400
+    except Exception:
+        db.session.rollback()
+        return jsonify({'message': 'Không thể lưu hồ sơ'}), 500
 
     return jsonify({
         'message': 'Cập nhật hồ sơ cá nhân thành công',

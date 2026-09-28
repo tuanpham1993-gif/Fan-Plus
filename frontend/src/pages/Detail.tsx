@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from "react";
-import { useApp } from "../lib/store";
+
+import React, { useMemo, useState } from "react";
 import { Link } from "../lib/router";
+import { RemainingImages } from "../features/catalog/RemainingImages";
 import {
   Icon,
   Button,
   Crumbs,
-  ContentCard,
   BookmarkButton,
   Empty,
   Modal,
@@ -16,14 +16,18 @@ import {
 import { ContentMedia } from "../features/catalog/ContentMedia";
 import { ContentRating } from "../features/catalog/ContentRating";
 import { useContentDetail } from "../features/catalog/hooks";
-import { categoryLabel } from "../shared/catalog/taxonomy";
+import { useApp } from "../lib/store";
 
 export function RichText({ text }: { text: string }) {
   return (
     <div className="prose">
       {text.split(/\n\s*\n/).map((block, i) => {
-        if (block.startsWith("## ")) return <h2 key={i}>{block.slice(3)}</h2>;
+        if (block.startsWith("## ")) {
+          return <h2 key={i}>{block.slice(3)}</h2>;
+        }
+
         const bits = block.split(/(\*\*[^*]+\*\*)/g);
+
         return (
           <p key={i}>
             {bits.map((part, j) =>
@@ -40,84 +44,174 @@ export function RichText({ text }: { text: string }) {
   );
 }
 
+function resolveMediaUrl(value?: string) {
+  const candidate = value?.trim();
+
+  if (!candidate) return "";
+
+  try {
+    if (
+      candidate.startsWith("http://") ||
+      candidate.startsWith("https://")
+    ) {
+      return candidate;
+    }
+
+    const normalized = candidate.startsWith("/")
+      ? candidate
+      : `/${candidate}`;
+
+    return `http://127.0.0.1:5000${normalized}`;
+  } catch {
+    return "";
+  }
+}
+
 export default function Detail({ id }: { id: string }) {
-  const { spoilerSafe, notify } = useApp();
+  const { notify } = useApp();
+
   const { detail, loading, error, notFound } = useContentDetail(id);
-  const [revealed, setRevealed] = useState(false);
+
   const [gallery, setGallery] = useState<number | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
 
-  useEffect(() => {
-    setRevealed(false);
-    setGallery(null);
-  }, [id]);
+  const content = detail?.content ?? null;
+
+  const galleryImages = useMemo(() => {
+    if (!content) return [];
+
+    const mediaList = content.media || [];
+    const fromMedia = mediaList
+      .filter((item) => item.media_type === "IMAGE")
+      .map((item) => resolveMediaUrl(item.media_url))
+      .filter(Boolean);
+
+    if (fromMedia.length > 0) return fromMedia;
+    return content.image ? [resolveMediaUrl(content.image)].filter(Boolean) : [];
+  }, [content]);
+
+  const heroImage =
+    galleryImages[0] || content?.image || "/art/community.svg";
+
+  const share = async () => {
+    const url = window.location.href;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: content?.title ?? "Fan Hub",
+          url,
+        });
+        return;
+      } catch (cause) {
+        if (
+          cause instanceof Error &&
+          cause.name === "AbortError"
+        ) {
+          return;
+        }
+      }
+    }
+
+    if (await copyText(url)) {
+      notify("Story link copied.");
+    } else {
+      setShareOpen(true);
+    }
+  };
 
   if (loading) {
     return (
-      <section className="content-section" aria-label="Loading content detail">
+      <section
+        className="content-section"
+        aria-label="Loading content detail"
+      >
         <Skeleton cards={1} />
       </section>
     );
   }
 
-  if (!detail) {
+  if (!detail || !content) {
     return (
       <Empty
-        title={notFound ? "This story is unavailable" : "We couldn't load this story"}
+        title={
+          notFound
+            ? "This story is unavailable"
+            : "We couldn't load this story"
+        }
         description={
           error ||
           "The content detail service is unavailable. Please try again later."
         }
       >
-        <Link className="btn btn-primary" to="/explore">
+        <Link
+          className="btn btn-primary"
+          to="/explore"
+        >
           Back to Explore
         </Link>
       </Empty>
     );
   }
 
-  const { content, related, rating } = detail;
-  const categoryName = categoryLabel(content.categoryId);
-  const galleryImages = [content.image, "/art/community.svg", "/art/manga.svg"];
+  const categoryName = content.categoryId
+    ? content.categoryId.charAt(0).toUpperCase() + content.categoryId.slice(1)
+    : "Community";
 
-  const share = async () => {
-    const url = window.location.href;
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: content.title, url });
-        return;
-      } catch (cause) {
-        if (cause instanceof Error && cause.name === "AbortError") return;
-      }
-    }
-    if (await copyText(url)) notify("Story link copied.");
-    else setShareOpen(true);
-  };
+  const contentType =
+    typeLabels[content.type] ??
+    content.type;
+
+  const authorName =
+    typeof content.author === "string" && content.author
+      ? content.author
+      : "Unknown author";
+
+  const publishedDate = content.publishedAt
+    ? new Intl.DateTimeFormat("en-GB", {
+      dateStyle: "medium",
+      timeZone: "Asia/Ho_Chi_Minh",
+    }).format(new Date(content.publishedAt))
+    : "Unknown date";
 
   return (
     <>
       <Crumbs
         items={[
-          { label: "Explore", to: "/explore" },
+          {
+            label: "Explore",
+            to: "/explore",
+          },
           {
             label: categoryName,
-            to: `/explore?category=${encodeURIComponent(content.categoryId)}`,
+            to: `/explore?category=${encodeURIComponent(
+              String(content.categoryId),
+            )}`,
           },
-          { label: typeLabels[content.type] },
+          {
+            label: contentType,
+          },
         ]}
       />
 
       <div className="detail-banner">
         <img
-          src={content.image}
-          alt={`Original ${content.fandom} concept illustration`}
+          src={heroImage}
+          alt={content.title}
           width="1280"
           height="900"
         />
+
         <div className="detail-banner-bottom">
-          <span className="pill">{categoryName}</span>
-          <span>{content.fandom}</span>
-          <span className="pill pill-outline">{typeLabels[content.type]}</span>
+          <span className="pill">
+            {categoryName}
+          </span>
+
+          <span>{contentType}</span>
+
+          <span className="pill pill-outline">
+            {content.status}
+          </span>
         </div>
       </div>
 
@@ -125,25 +219,34 @@ export default function Detail({ id }: { id: string }) {
         <article>
           <div className="detail-title">
             <span className="eyebrow">
-              {content.status === "draft"
-                ? "UNPUBLISHED DRAFT - ADMIN PREVIEW"
-                : "FROM THE FAN HUB COLLECTION"}
+              {content.status === "pending"
+                ? "PENDING REVIEW"
+                : content.status === "rejected"
+                  ? "REJECTED CONTENT"
+                  : "FROM THE FAN HUB COLLECTION"}
             </span>
+
             <h1>{content.title}</h1>
-            <p className="detail-deck">{content.description}</p>
+
+            <p className="detail-deck">
+              {content.description}
+            </p>
+
             <div className="byline">
-              <span className="avatar avatar-small">FH</span>
-              <span>
-                <strong>{content.author}</strong>
-                <br />
-                <small>
-                  {new Intl.DateTimeFormat("en-GB", {
-                    dateStyle: "medium",
-                    timeZone: "Asia/Ho_Chi_Minh",
-                  }).format(new Date(content.publishedAt))}{" "}
-                  / {content.duration}
-                </small>
+              <span className="avatar avatar-small">
+                {authorName
+                  .slice(0, 2)
+                  .toUpperCase()}
               </span>
+
+              <span>
+                <strong>{authorName}</strong>
+
+                <br />
+
+                <small>{publishedDate}</small>
+              </span>
+
               <button
                 className="icon-btn"
                 type="button"
@@ -161,42 +264,41 @@ export default function Detail({ id }: { id: string }) {
             onOpenGallery={setGallery}
           />
 
-          {content.spoiler && spoilerSafe && !revealed ? (
-            <div className="spoiler-gate">
-              <Icon name="shield" size={38} />
-              <h2>A little heads-up.</h2>
-              <p>
-                This section discusses a story reveal. Your spoiler-safe
-                preference is on.
-              </p>
-              <Button variant="secondary" onClick={() => setRevealed(true)}>
-                I'm ready - reveal this section
-              </Button>
-            </div>
-          ) : (
-            <RichText text={content.body} />
-          )}
+          <RichText text={content.body} />
 
-          <div className="tag-list">
-            {content.tags.map((tag) => (
-              <span className="chip static-chip" key={tag}>
-                {tag}
-              </span>
-            ))}
-          </div>
-
-          <ContentRating contentId={content.id} initial={rating} />
+          <RemainingImages
+            content={content}
+            galleryImages={galleryImages}
+            onOpenGallery={setGallery}
+          />
+          <ContentRating
+            contentId={String(content.id)}
+            initial={detail.rating}
+          />
         </article>
 
         <aside className="detail-sidebar">
           <div className="panel">
-            <span className="eyebrow">MAKE ROOM FOR A NEW FAVORITE</span>
+            <span className="eyebrow">
+              MAKE ROOM FOR A NEW FAVORITE
+            </span>
+
             <h2>Keep this world close.</h2>
+
             <p>
-              Save it for later. Add a note. Pick up where curiosity left off.
+              Save it for later. Add a note. Pick up
+              where curiosity left off.
             </p>
-            <BookmarkButton content={content} compact={false} />
-            <Button variant="ghost" onClick={share}>
+
+            <BookmarkButton
+              content={content}
+              compact={false}
+            />
+
+            <Button
+              variant="ghost"
+              onClick={share}
+            >
               <Icon name="share" size={17} />
               Share this discovery
             </Button>
@@ -204,80 +306,87 @@ export default function Detail({ id }: { id: string }) {
 
           <div className="panel source-panel">
             <Icon name="shield" size={24} />
+
             <h3>Know what you're reading</h3>
+
             <p>
-              {content.sourceLabel}. This entry is for interface testing, not a
-              verified reference about a real franchise.
+              Fan Hub Content. This entry is from the
+              catalog dataset.
             </p>
-            <Link to="/privacy" className="small-link">
-              Content & privacy notes <Icon name="arrow" size={13} />
+
+            <Link
+              to="/privacy"
+              className="small-link"
+            >
+              Content & privacy notes{" "}
+              <Icon name="arrow" size={13} />
             </Link>
           </div>
 
           <Link
-            to={`/explore?fandom=${encodeURIComponent(content.fandom)}`}
+            to={`/explore?category=${encodeURIComponent(
+              String(content.categoryId),
+            )}`}
             className="world-callout"
           >
             <span>MORE FROM</span>
-            <h3>{content.fandom}</h3>
+
+            <h3>{categoryName}</h3>
+
             <Icon name="arrow" />
           </Link>
         </aside>
       </div>
 
-      {related.length > 0 && (
-        <section className="content-section">
-          <div className="section-heading">
-            <h2>
-              Stay a little longer<span className="accent">.</span>
-            </h2>
-            <Link
-              to={`/explore?category=${encodeURIComponent(content.categoryId)}`}
-              className="text-link"
-            >
-              Explore this world <Icon name="arrow" size={17} />
-            </Link>
-          </div>
-          <div className="card-grid">
-            {related.map((item) => (
-              <ContentCard content={item} key={item.id} />
-            ))}
-          </div>
-        </section>
-      )}
+      {galleryImages.length > 0 && (
+        <Modal
+          title="Concept gallery"
+          open={gallery !== null}
+          onClose={() => setGallery(null)}
+          wide
+        >
+          {gallery !== null && (
+            <>
+              <img
+                className="lightbox-image"
+                src={galleryImages[gallery]}
+                alt={`Content image ${gallery + 1}`}
+              />
 
-      <Modal
-        title="Concept gallery"
-        open={gallery !== null}
-        onClose={() => setGallery(null)}
-        wide
-      >
-        {gallery !== null && (
-          <>
-            <img
-              className="lightbox-image"
-              src={galleryImages[gallery]}
-              alt={`Original concept study ${gallery + 1}`}
-            />
-            <div className="modal-actions">
-              <Button
-                variant="secondary"
-                onClick={() => setGallery((gallery + 2) % galleryImages.length)}
-              >
-                Previous
-              </Button>
-              <span>
-                {gallery + 1} / {galleryImages.length}
-              </span>
-              <Button
-                onClick={() => setGallery((gallery + 1) % galleryImages.length)}
-              >
-                Next
-              </Button>
-            </div>
-          </>
-        )}
-      </Modal>
+              <div className="modal-actions">
+                <Button
+                  variant="secondary"
+                  onClick={() =>
+                    setGallery(
+                      (gallery +
+                        galleryImages.length -
+                        1) %
+                      galleryImages.length,
+                    )
+                  }
+                >
+                  Previous
+                </Button>
+
+                <span>
+                  {gallery + 1} / {galleryImages.length}
+                </span>
+
+                <Button
+                  onClick={() =>
+                    setGallery(
+                      (gallery + 1) %
+                      galleryImages.length,
+                    )
+                  }
+                >
+                  Next
+                </Button>
+              </div>
+            </>
+          )}
+        </Modal>
+      )}
 
       <Modal
         title="Share this discovery"
@@ -286,10 +395,13 @@ export default function Detail({ id }: { id: string }) {
       >
         <label className="field">
           <span>Copy this address</span>
+
           <input
             readOnly
             value={window.location.href}
-            onFocus={(event) => event.currentTarget.select()}
+            onFocus={(event) =>
+              event.currentTarget.select()
+            }
           />
         </label>
       </Modal>

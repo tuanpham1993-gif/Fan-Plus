@@ -33,9 +33,8 @@ export const authApi = {
   async login(
     email: string,
     password: string,
-    // TẠM THỜI: dùng token test cố định vì UI captcha đang bị ẩn.
-    // Khi triển khai captcha thật, xóa giá trị mặc định này và bắt
-    // buộc truyền captchaToken thật từ widget vào.
+    // Temporary: use a fixed test token while the captcha UI is hidden.
+    // Remove the default and require a real widget token when captcha is implemented.
     captchaToken: string = "PASSED_TEST_TOKEN",
   ) {
     const result = await apiClient.post<any>("/auth/login", {
@@ -50,9 +49,7 @@ export const authApi = {
     return { user: result.user as User };
   },
 
-  // CHƯA CÓ Ở BACKEND — endpoint /auth/verify và /auth/resend-verification
-  // hiện KHÔNG tồn tại trong backend thật (xác nhận qua scan route).
-  // Gọi các hàm này ở thời điểm hiện tại sẽ luôn nhận 404.
+  // These endpoints are not implemented by the current backend and return 404.
   async verify(email: string, code: string) {
     const result = await apiClient.post<{ user?: User; message?: string }>(
       "/auth/verify",
@@ -67,9 +64,7 @@ export const authApi = {
     };
   },
 
-  // CHƯA CÓ Ở BACKEND — endpoint /auth/verify và /auth/resend-verification
-  // hiện KHÔNG tồn tại trong backend thật (xác nhận qua scan route).
-  // Gọi các hàm này ở thời điểm hiện tại sẽ luôn nhận 404.
+  // These endpoints are not implemented by the current backend and return 404.
   async resendVerification(email: string) {
     const result = await apiClient.post<{
       emailSent: boolean;

@@ -1,12 +1,18 @@
-﻿export type CategoryId = string;
+export type CategoryId = string;
+
 export type ContentType =
+  | "news"
   | "article"
-  | "character"
-  | "video"
-  | "audio"
-  | "gallery"
-  | "merchandise";
+  | "event"
+  | "post";
+
 export type Role = "user" | "admin";
+
+export type ContentStatus =
+  | "published"
+  | "pending"
+  | "rejected";
+
 export interface Category {
   id: CategoryId;
   name: string;
@@ -16,30 +22,32 @@ export interface Category {
   accentColor?: string;
   contentCount?: number;
 }
+
+export type MediaType = "IMAGE" | "VIDEO" | "AUDIO";
+
+export interface ContentMedia {
+  id: number | string;
+  media_url: string;
+  media_type: MediaType;
+}
+
 export interface Content {
   id: string;
   title: string;
-  categoryId: CategoryId;
-  fandom: string;
+  categoryId: string;
   type: ContentType;
   description: string;
   body: string;
   image: string;
-  genre: string;
-  year: number;
   publishedAt: string;
-  popularity: number;
   rating: number;
-  duration: string;
-  tags: string[];
-  status: "published" | "draft";
   author: string;
-  spoiler: boolean;
+  status: ContentStatus;
   mediaUrl?: string;
-  sourceLabel: string;
-  releaseDate?: string;
+  media?: ContentMedia[];
 }
-/** Event payload of the Flask /events API (see backend/schema/event.py). */
+
+
 export interface BackendEvent {
   id: number;
   content_id: number;
@@ -47,13 +55,15 @@ export interface BackendEvent {
   city: string;
   latitude: number | string;
   longitude: number | string;
-  /** ISO with +07:00 offset. */
+
   start_time: string;
+
   end_time?: string | null;
   register_url?: string | null;
   image_url?: string | null;
   created_at?: string;
   updated_at?: string;
+
   content?: {
     id: number;
     title: string;
@@ -66,6 +76,7 @@ export interface BackendEvent {
     status: "PENDING" | "DONE" | "REJECTED";
   };
 }
+
 
 export interface FanEvent {
   id: string;
@@ -81,11 +92,18 @@ export interface FanEvent {
   image: string;
   ticketUrl?: string;
 }
+
+
 export interface User {
   id: string;
   name: string;
   email: string;
   avatar: string | null;
+  phone?: string | null;
+  birthday?: string | null;
+  gender?: string | null;
+  city?: string | null;
+  bio?: string | null;
   role: Role;
   status: string;
   favorite_fandoms: string[];
@@ -93,6 +111,8 @@ export interface User {
   created_at: string;
   updated_at: string;
 }
+
+
 export interface Bookmark {
   id: string;
   userId: string;
@@ -100,16 +120,22 @@ export interface Bookmark {
   note: string;
   createdAt: string;
 }
+
+
 export interface Rating {
   userId: string;
   contentId: string;
   value: number;
 }
+
+
 export interface Activity {
   userId: string;
   contentId: string;
   at: string;
 }
+
+
 export interface Feedback {
   id: string;
   userId: string | null;
@@ -118,6 +144,8 @@ export interface Feedback {
   status: "open" | "resolved";
   createdAt: string;
 }
+
+
 export interface Submission {
   id: string;
   userId: string;
@@ -129,11 +157,15 @@ export interface Submission {
   reason: string;
   createdAt: string;
 }
+
+
 export interface FAQ {
   id: string;
   question: string;
   answer: string;
 }
+
+
 export interface Database {
   schemaVersion: 1;
   categories: Category[];
@@ -147,6 +179,8 @@ export interface Database {
   submissions: Submission[];
   faqs: FAQ[];
 }
+
+
 export interface Filter {
   q?: string;
   category?: string;
@@ -158,6 +192,8 @@ export interface Filter {
   sort?: string;
   page?: string;
 }
+
+
 export interface Page<T> {
   items: T[];
   total: number;
@@ -165,6 +201,8 @@ export interface Page<T> {
   pageSize: number;
   pageCount: number;
 }
+
+
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant";

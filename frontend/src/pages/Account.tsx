@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useApp } from "../lib/store";
 import { useAuth } from "../features/auth/AuthProvider";
 import { useProfileSettings } from "../features/profile/hooks";
@@ -8,6 +8,17 @@ import { useHomeCatalog } from "../features/catalog/hooks";
 import { FANDOM_CATEGORIES, categoryLabel } from "../shared/catalog/taxonomy";
 import { resolveAvatarUrl, serverMode } from "../shared/http/client";
 import { profileApi } from "../features/profile/api";
+import PersonalInfoFields, {
+  type PersonalInfoErrors,
+  type PersonalInfoValues,
+} from "../features/profile/PersonalInfoFields";
+import ChangePasswordModal from "../features/profile/ChangePasswordModal";
+import {
+  validateBirthday,
+  validateBio,
+  validateCity,
+  validatePhone,
+} from "../features/profile/validation";
 import { Link, navigate, currentPath } from "../lib/router";
 import { repository } from "../services/repository";
 import type { Feedback } from "../domain/types";
@@ -341,16 +352,7 @@ function Collection() {
   );
 }
 function Profile() {
-  const {
-    notify,
-    setDb,
-    fontScale,
-    setFontScale,
-    theme,
-    toggleTheme,
-    spoilerSafe,
-    toggleSpoilers,
-  } = useApp();
+  const { notify, setDb } = useApp();
   const { logout } = useAuth();
   const {
     profile: user,
@@ -360,38 +362,74 @@ function Profile() {
     save,
     adoptProfile,
   } = useProfileSettings();
-  const {
-    status: bookmarkStatus,
-    items: bookmarkItems,
-    count: bookmarkCount,
-    error: bookmarkError,
-  } = useBookmarks();
-  const favoriteCategories = Array.isArray(
-    (user?.display_preferences as { favoriteCategories?: string[] } | undefined)
-      ?.favoriteCategories,
-  )
-    ? ((user?.display_preferences as { favoriteCategories?: string[] })
-        .favoriteCategories as string[])
-    : [];
   const favoriteFandoms = user?.favorite_fandoms ?? [];
   const [name, setName] = useState(user?.name || "");
-  const [cats, setCats] = useState(favoriteCategories);
   const [fandoms, setFandoms] = useState(favoriteFandoms.join(", "));
+  const [personalInfo, setPersonalInfo] = useState<PersonalInfoValues>({
+    phone: user?.phone ?? "",
+    birthday: user?.birthday?.slice(0, 10) ?? "",
+    gender: user?.gender ?? "",
+    city: user?.city ?? "",
+    bio: user?.bio ?? "",
+  });
+  const [personalErrors, setPersonalErrors] = useState<PersonalInfoErrors>({});
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [avatarBroken, setAvatarBroken] = useState(false);
   const [removeAvatarOpen, setRemoveAvatarOpen] = useState(false);
   const [reset, setReset] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [savePending, setSavePending] = useState(false);
+  const profileFormRef = useRef<HTMLFormElement>(null);
+  const passwordActionRef = useRef<HTMLDivElement>(null);
+  const saveInFlightRef = useRef(false);
+  const previousUserRef = useRef(user);
 
   useEffect(() => {
     if (!user) return;
-    setName(user.name);
-    setCats(favoriteCategories);
-    setFandoms(favoriteFandoms.join(", "));
+    const previous = previousUserRef.current;
+    if (!previous || previous.id !== user.id) {
+      setName(user.name);
+      setFandoms(favoriteFandoms.join(", "));
+      setPersonalInfo({
+        phone: user.phone ?? "",
+        birthday: user.birthday?.slice(0, 10) ?? "",
+        gender: user.gender ?? "",
+        city: user.city ?? "",
+        bio: user.bio ?? "",
+      });
+    } else {
+      if (previous.name !== user.name) setName(user.name);
+      if (
+        (previous.favorite_fandoms ?? []).join("|") !==
+        favoriteFandoms.join("|")
+      ) {
+        setFandoms(favoriteFandoms.join(", "));
+      }
+      setPersonalInfo((current) => ({
+        phone:
+          previous.phone !== user.phone ? (user.phone ?? "") : current.phone,
+        birthday:
+          previous.birthday !== user.birthday
+            ? (user.birthday?.slice(0, 10) ?? "")
+            : current.birthday,
+        gender:
+          previous.gender !== user.gender
+            ? (user.gender ?? "")
+            : current.gender,
+        city: previous.city !== user.city ? (user.city ?? "") : current.city,
+        bio: previous.bio !== user.bio ? (user.bio ?? "") : current.bio,
+      }));
+    }
+    previousUserRef.current = user;
   }, [
     user?.id,
     user?.name,
     user?.favorite_fandoms?.join("|"),
-    JSON.stringify(user?.display_preferences ?? {}),
+    user?.phone,
+    user?.birthday,
+    user?.gender,
+    user?.city,
+    user?.bio,
   ]);
 
   useEffect(() => {
@@ -404,7 +442,7 @@ function Profile() {
       !["image/png", "image/jpeg", "image/webp"].includes(file.type) ||
       file.size > 2 * 1024 * 1024
     ) {
-      notify("Chọn ảnh PNG, JPEG hoặc WebP không quá 2MB.", "error");
+      notify("Choose a PNG, JPEG, or WebP image no larger than 2 MB.", "error");
       return;
     }
     setAvatarBusy(true);
@@ -412,10 +450,10 @@ function Profile() {
       const updatedUser = await profileApi.uploadAvatar(file);
       adoptProfile(updatedUser);
       setAvatarBroken(false);
-      notify("Ảnh đại diện đã được cập nhật.");
+      notify("Avatar updated.");
     } catch (cause) {
       notify(
-        cause instanceof Error ? cause.message : "Không thể tải ảnh lên.",
+        cause instanceof Error ? cause.message : "Could not upload avatar.",
         "error",
       );
     } finally {
@@ -430,10 +468,10 @@ function Profile() {
       const updatedUser = await profileApi.removeAvatar();
       adoptProfile(updatedUser);
       setAvatarBroken(false);
-      notify("Ảnh đại diện đã được xóa.");
+      notify("Avatar removed.");
     } catch (cause) {
       notify(
-        cause instanceof Error ? cause.message : "Không thể xóa ảnh đại diện.",
+        cause instanceof Error ? cause.message : "Could not remove avatar.",
         "error",
       );
     } finally {
@@ -447,9 +485,116 @@ function Profile() {
       navigate("/");
     } catch (cause) {
       notify(
-        cause instanceof Error ? cause.message : "Sign out failed.",
+        cause instanceof Error ? cause.message : "Could not sign out.",
         "error",
       );
+    }
+  };
+
+  const isDirty = Boolean(
+    user &&
+    (name !== user.name ||
+      fandoms !== (user.favorite_fandoms ?? []).join(", ") ||
+      personalInfo.phone !== (user.phone ?? "") ||
+      personalInfo.birthday !== (user.birthday?.slice(0, 10) ?? "") ||
+      personalInfo.gender !== (user.gender ?? "") ||
+      personalInfo.city !== (user.city ?? "") ||
+      personalInfo.bio !== (user.bio ?? "")),
+  );
+
+  const closePasswordModal = () => {
+    setPasswordOpen(false);
+    requestAnimationFrame(() =>
+      passwordActionRef.current?.querySelector("button")?.focus(),
+    );
+  };
+
+  const updatePersonalInfo = (
+    field: keyof PersonalInfoValues,
+    value: string,
+  ) => {
+    setPersonalInfo((current) => ({ ...current, [field]: value }));
+    setPersonalErrors((current) => ({ ...current, [field]: "" }));
+  };
+
+  const validatePersonalInfo = () => {
+    const nextErrors: PersonalInfoErrors = {
+      phone: validatePhone(personalInfo.phone),
+      birthday: validateBirthday(personalInfo.birthday),
+      gender:
+        personalInfo.gender &&
+        !["male", "female", "other", "undisclosed"].includes(
+          personalInfo.gender,
+        )
+          ? "Invalid gender."
+          : "",
+      city: validateCity(personalInfo.city),
+      bio: validateBio(personalInfo.bio),
+    };
+    setPersonalErrors(nextErrors);
+    if (!Object.values(nextErrors).some(Boolean)) return true;
+
+    requestAnimationFrame(() =>
+      profileFormRef.current
+        ?.querySelector<HTMLElement>('[aria-invalid="true"]')
+        ?.focus(),
+    );
+    return false;
+  };
+
+  const handleSaveProfile = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (saving || saveInFlightRef.current || !isDirty) return;
+    if (!validatePersonalInfo()) return;
+
+    saveInFlightRef.current = true;
+    setSavePending(true);
+    try {
+      const result = await save({
+        name: name.trim(),
+        favorite_fandoms: fandoms
+          .split(",")
+          .map((value) => value.trim())
+          .filter(Boolean),
+        phone: personalInfo.phone.trim() || null,
+        birthday: personalInfo.birthday.trim() || null,
+        gender: personalInfo.gender.trim() || null,
+        city: personalInfo.city.trim() || null,
+        bio: personalInfo.bio.trim() || null,
+      });
+      const updatedUser = result.user;
+
+      // Keep every input aligned with the profile confirmed by the server.
+      adoptProfile(updatedUser);
+      setName(updatedUser.name);
+      setFandoms((updatedUser.favorite_fandoms ?? []).join(", "));
+      setPersonalInfo({
+        phone: updatedUser.phone ?? "",
+        birthday: updatedUser.birthday?.slice(0, 10) ?? "",
+        gender: updatedUser.gender ?? "",
+        city: updatedUser.city ?? "",
+        bio: updatedUser.bio ?? "",
+      });
+      setPersonalErrors({});
+
+      if (result.unsupportedFields.length) {
+        notify(
+          `Profile saved, but the server does not support: ${result.unsupportedFields.join(
+            ", ",
+          )}.`,
+          "info",
+        );
+      } else {
+        notify("Profile saved.");
+      }
+    } catch (cause) {
+      notify(
+        cause instanceof Error ? cause.message : "Could not save your profile.",
+        "error",
+      );
+    } finally {
+      saveInFlightRef.current = false;
+      setSavePending(false);
     }
   };
 
@@ -457,7 +602,7 @@ function Profile() {
     return (
       <>
         <PageHeading
-          eyebrow="MAKE THIS SPACE YOURS"
+          eyebrow="YOUR PERSONAL SPACE"
           title="Your profile."
           description="Loading your account settings."
         />
@@ -474,69 +619,31 @@ function Profile() {
   return (
     <>
       <PageHeading
-        eyebrow="MAKE THIS SPACE YOURS"
+        eyebrow="YOUR PERSONAL SPACE"
         title="Your profile."
         description={
           serverMode
-            ? "Your profile is loaded from the authenticated Flask session. Appearance preferences stay on this device."
+            ? "Your profile information is saved to your account."
             : "Your interests shape your discoveries. This demo profile is stored only in this browser."
         }
       />
       <AccountNav />
-      <div className="profile-grid">
-        <form
-          className="panel stack-form"
-          onSubmit={async (event) => {
-            event.preventDefault();
-            try {
-              const result = await save({
-                name,
-                favorite_fandoms: fandoms
-                  .split(",")
-                  .map((value) => value.trim())
-                  .filter(Boolean),
-                display_preferences: {
-                  favoriteCategories: cats,
-                },
-              });
-              if (result.unsupportedFields.length) {
-                notify(
-                  `Profile saved, but the current backend does not yet persist: ${result.unsupportedFields.join(
-                    ", ",
-                  )}. See BACKEND_HANDOFF.md.`,
-                  "info",
-                );
-              } else {
-                notify("Your profile has been updated.");
-              }
-            } catch (cause) {
-              notify(
-                cause instanceof Error
-                  ? cause.message
-                  : "Your profile could not be updated.",
-                "error",
-              );
-            }
-          }}
-        >
-          {profileError && <Notice kind="error">{profileError}</Notice>}
-          {profileLoading && <p className="muted">Refreshing profile...</p>}
-
-          {serverMode && (
-            <Notice>
-              The current Flask profile contract persists the authenticated user
-              record, including favorite fandoms and display preferences. The UI
-              stays aligned to the server contract and does not invent legacy
-              demo-only fields.
-            </Notice>
-          )}
-
+      <div className="profile-single">
+        <section className="panel profile-card">
+          <header className="profile-card-header">
+            <div>
+              <h2>Personal profile</h2>
+              <p className="muted">
+                Your profile information is saved to your account.
+              </p>
+            </div>
+          </header>
           <div className="profile-identity">
             <div className="profile-avatar">
               {user.avatar && !avatarBroken ? (
                 <img
                   src={resolveAvatarUrl(user.avatar)}
-                  alt={`Ảnh đại diện của ${user.name}`}
+                  alt={`${user.name}'s avatar`}
                   onError={() => setAvatarBroken(true)}
                 />
               ) : (
@@ -544,196 +651,141 @@ function Profile() {
               )}
             </div>
             <div>
-              <h2>{user.name}</h2>
+              <h3>{user.name}</h3>
               <p className="muted">{user.email}</p>
-              <label className="upload-label">
-                Change avatar
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  disabled={avatarBusy}
-                  onChange={(event) => {
-                    const file = event.currentTarget.files?.[0];
-                    event.currentTarget.value = "";
-                    void upload(file);
-                  }}
-                />
-              </label>
+              <div className="profile-avatar-actions">
+                <label className="upload-label">
+                  Change avatar
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    disabled={avatarBusy}
+                    onChange={(event) => {
+                      const file = event.currentTarget.files?.[0];
+                      event.currentTarget.value = "";
+                      void upload(file);
+                    }}
+                  />
+                </label>
+                {user.avatar && (
+                  <button
+                    className="small-link"
+                    type="button"
+                    disabled={avatarBusy}
+                    onClick={() => setRemoveAvatarOpen(true)}
+                  >
+                    Remove avatar
+                  </button>
+                )}
+              </div>
               {avatarBusy && (
                 <p className="muted" role="status">
-                  Đang tải ảnh...
+                  Uploading image...
                 </p>
-              )}
-              {user.avatar && (
-                <button
-                  className="small-link"
-                  type="button"
-                  disabled={avatarBusy}
-                  onClick={() => setRemoveAvatarOpen(true)}
-                >
-                  Remove avatar
-                </button>
               )}
             </div>
           </div>
-
-          <Field label="Display name">
-            <input
-              required
-              maxLength={60}
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-            />
-          </Field>
-
-          <fieldset>
-            <legend>Favorite categories</legend>
-            <div className="preference-grid">
-              {FANDOM_CATEGORIES.map((category) => (
-                <label
-                  key={category.id}
-                  className={
-                    cats.includes(category.id)
-                      ? "preference selected"
-                      : "preference"
-                  }
-                >
-                  <input
-                    type="checkbox"
-                    checked={cats.includes(category.id)}
-                    onChange={() =>
-                      setCats((selected) =>
-                        selected.includes(category.id)
-                          ? selected.filter((id) => id !== category.id)
-                          : [...selected, category.id],
-                      )
-                    }
-                  />
-                  <Icon name={category.icon} size={18} />
-                  {category.name}
-                </label>
-              ))}
-            </div>
-          </fieldset>
-
-          <Field
-            label="Favorite fandoms"
-            hint="Separate fandom names with commas. The backend accepts up to 20 names, each up to 80 characters."
+          <div className="profile-divider" />
+          <form
+            ref={profileFormRef}
+            className="profile-form"
+            onSubmit={handleSaveProfile}
           >
-            <input
-              value={fandoms}
-              onChange={(event) => setFandoms(event.target.value)}
-              maxLength={500}
-            />
-          </Field>
-
-          <Button type="submit" busy={saving}>
-            Save profile <Icon name="check" size={17} />
-          </Button>
-        </form>
-
-        <aside className="stack">
-          <section className="panel">
-            <h2>Your reading list</h2>
-            {bookmarkStatus === "loading" ? (
-              <Skeleton cards={1} />
-            ) : bookmarkError ? (
-              <Notice kind="error">{bookmarkError}</Notice>
-            ) : (
-              <>
-                <p className="muted">
-                  {bookmarkCount} saved{" "}
-                  {bookmarkCount === 1 ? "discovery" : "discoveries"}.
-                </p>
-                <div className="stack">
-                  {bookmarkItems.slice(0, 3).map((item) => (
-                    <Link
-                      className="activity-row"
-                      to={`/content/${item.content.id}`}
-                      key={item.bookmark.id}
-                    >
-                      <img src={item.content.image} alt="" />
-                      <span>
-                        <strong>{item.content.title}</strong>
-                        <small>{categoryLabel(item.content.categoryId)}</small>
-                      </span>
-                      <Icon name="arrow" size={16} />
-                    </Link>
-                  ))}
-                </div>
-                <Link className="text-link" to="/collection">
-                  Open your collection <Icon name="arrow" size={15} />
-                </Link>
-              </>
-            )}
-          </section>
-
-          <section className="panel">
-            <h2>Reading preferences</h2>
-            <div className="setting-row">
-              <span>Appearance</span>
-              <Button variant="secondary" onClick={toggleTheme}>
-                <Icon name={theme === "dark" ? "moon" : "sun"} size={16} />
-                {theme === "dark" ? "Dark" : "Light"}
-              </Button>
-            </div>
-            <Field label="Text size">
-              <select
-                value={fontScale}
-                onChange={(event) => setFontScale(Number(event.target.value))}
-              >
-                <option value={1}>Standard - 100%</option>
-                <option value={1.125}>Comfortable - 112.5%</option>
-                <option value={1.25}>Large - 125%</option>
-              </select>
-            </Field>
-            <label className="check-row">
+            {profileError && <Notice kind="error">{profileError}</Notice>}
+            {profileLoading && <p className="muted">Refreshing profile...</p>}
+            <Field label="Display name">
               <input
-                type="checkbox"
-                checked={spoilerSafe}
-                onChange={toggleSpoilers}
+                required
+                maxLength={60}
+                value={name}
+                onChange={(event) => setName(event.target.value)}
               />
-              Hide flagged story bodies until I reveal them
-            </label>
-            <p className="muted small">
-              This is a reading convenience. It does not remove spoiler data
-              from the browser.
-            </p>
-          </section>
-
-          <section className="panel">
-            <h2>{serverMode ? "Account session" : "Demo workspace"}</h2>
-            <Notice>
-              {serverMode
-                ? "Authentication and supported profile fields are server-owned. Frontend route guards remain UX only."
-                : "This demo account and its business data exist only in local browser storage."}
-            </Notice>
-            <div className="stack">
-              <Link to="/forgot-password" className="text-link">
-                Try password reset <Icon name="arrow" size={15} />
-              </Link>
-              <Button variant="secondary" onClick={() => void signOut()}>
-                Sign out <Icon name="logout" size={16} />
+            </Field>
+            {serverMode && (
+              <PersonalInfoFields
+                user={user}
+                values={personalInfo}
+                errors={personalErrors}
+                onChange={updatePersonalInfo}
+              />
+            )}
+            <div className="profile-field-full">
+              <Field
+                label="Favorite fandoms"
+                hint="Separate fandom names with commas. Up to 20 names, each no longer than 80 characters."
+              >
+                <input
+                  value={fandoms}
+                  onChange={(event) => setFandoms(event.target.value)}
+                  maxLength={500}
+                />
+              </Field>
+            </div>
+            {!serverMode && (
+              <Notice>
+                This demo account and its data are stored only in this browser.
+              </Notice>
+            )}
+            <div className="profile-divider" />
+            <div className="profile-actions">
+              <Button
+                type="submit"
+                busy={saving || savePending}
+                disabled={!isDirty || saving || savePending}
+              >
+                Save profile
+              </Button>
+              {serverMode && (
+                <div
+                  className="profile-password-trigger"
+                  ref={passwordActionRef}
+                >
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    aria-haspopup="dialog"
+                    onClick={() => setPasswordOpen(true)}
+                  >
+                    Change password
+                  </Button>
+                </div>
+              )}
+              <Button
+                type="button"
+                variant="secondary"
+                className="profile-signout-action"
+                onClick={() => void signOut()}
+              >
+                Sign out
               </Button>
               {!serverMode && (
-                <Button variant="danger" onClick={() => setReset(true)}>
-                  Reset all demo data
+                <Button
+                  type="button"
+                  variant="danger"
+                  onClick={() => setReset(true)}
+                >
+                  Delete all demo data
                 </Button>
               )}
             </div>
-          </section>
-        </aside>
+          </form>
+        </section>
       </div>
 
+      <ChangePasswordModal
+        open={passwordOpen}
+        user={user}
+        onClose={closePasswordModal}
+      />
       {!serverMode && (
         <Confirm
           open={reset}
           onClose={() => setReset(false)}
-          title="Reset this demo workspace?"
-          description="This removes all local profiles, notes, ratings, submissions, edits and chat history from Fan Hub Plus. Your appearance preference stays. Other websites are not affected."
+          title="Delete demo workspace?"
+          description="This removes profiles, notes, ratings, submissions, edits and chat history from Fan Hub Plus. Your appearance preference will remain."
           onConfirm={async () => {
             setDb(repository.resetDemo());
-            notify("Demo workspace reset.");
+            notify("Demo data deleted.");
             navigate("/");
           }}
         />
@@ -742,7 +794,7 @@ function Profile() {
         open={removeAvatarOpen}
         onClose={() => setRemoveAvatarOpen(false)}
         title="Remove your avatar?"
-        description="Your profile will use your initial until you upload another image."
+        description="Your profile will show your initial until you upload another image."
         onConfirm={removeAvatar}
       />
     </>

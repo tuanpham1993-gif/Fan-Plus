@@ -25,25 +25,18 @@ function demoPage(db: Database, query: CatalogQuery): CatalogPage {
     {
       q: query.q,
       category: query.category,
-      fandom: query.fandom,
       type: query.type,
-      genre: query.genre,
-      year: query.year,
-      popular: query.popular ? "true" : undefined,
       sort: query.sortBy,
       page: query.page ? String(query.page) : undefined,
     },
     query.pageSize || 9,
   );
-  const published = db.contents.filter((content) => content.status === "published");
   return {
     ...page,
     facets: {
-      fandoms: [...new Set(published.map((content) => content.fandom))].sort(),
-      genres: [...new Set(published.map((content) => content.genre))].sort(),
-      years: [...new Set(published.map((content) => content.year))].sort(
-        (a, b) => b - a,
-      ),
+      fandoms: [],
+      genres: [],
+      years: [],
     },
   };
 }
@@ -85,14 +78,7 @@ export function demoContentDetail(
 
   return {
     content,
-    related: db.contents
-      .filter(
-        (candidate) =>
-          candidate.id !== content.id &&
-          candidate.categoryId === content.categoryId &&
-          candidate.status === "published",
-      )
-      .slice(0, 3),
+    event: null,
     rating: ratingSummary(db, content.id, user?.id),
   };
 }

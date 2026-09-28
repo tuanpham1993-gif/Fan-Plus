@@ -14,6 +14,7 @@ venv/
 .venv/
 ENV/
 env/
+backend/uploads/*
 
 # Temporary files and generated reports
 tmp_*
