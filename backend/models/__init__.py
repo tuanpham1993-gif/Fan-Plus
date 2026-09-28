@@ -14,7 +14,12 @@ from models.review import Review
 from models.bookmark import Bookmark
 from models.event import Event
 from models.user import User
-
+from .community import (
+    CommunityPost,
+    CommunityComment,
+    CommunityReaction,
+    CommunityReport
+)
 __all__ = [
     'User',
     'RefreshToken',

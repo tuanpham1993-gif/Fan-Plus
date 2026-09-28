@@ -60,6 +60,7 @@ def create_app(testing=False):
             print("Database Driver: SQLite (Local Fallback mode active)")
 
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"pool_pre_ping": True}
 
     db.init_app(app)
     jwt.init_app(app)
@@ -72,11 +73,11 @@ def create_app(testing=False):
     from routes.category import category_bp
     from routes.character import character_bp
     from routes.merchandise import merchandise_bp
-
+    from routes.community_routes import community_bp 
     app.register_blueprint(category_bp)
     app.register_blueprint(character_bp)
     app.register_blueprint(merchandise_bp)
-
+    app.register_blueprint(community_bp)
     register_blueprints(app)
 
     with app.app_context():
