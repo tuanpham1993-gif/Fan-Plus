@@ -81,9 +81,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async (
       email: string,
       password: string,
-      // TẠM THỜI: dùng token test cố định vì UI captcha đang bị ẩn.
-      // Khi triển khai captcha thật, xóa giá trị mặc định này và bắt
-      // buộc truyền captchaToken thật từ widget vào.
+      // Temporary: use a fixed test token while the captcha UI is hidden.
+      // Remove the default and require a real widget token when captcha is implemented.
       captchaToken = "PASSED_TEST_TOKEN",
     ) => {
       setError(null);

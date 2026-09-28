@@ -28,19 +28,6 @@ export const profileApi = {
       signal,
     }),
 
-  async updatePersonalInfo(
-    patch: Pick<
-      ProfileServerPatch,
-      "phone" | "birthday" | "gender" | "city" | "bio"
-    >,
-  ): Promise<User> {
-    const response = await apiClient.put<{ message?: string; user: User }>(
-      "/users/me",
-      patch,
-    );
-    return response.user;
-  },
-
   changePassword: (input: PasswordChangeRequest) =>
     apiClient.put<{ message?: string; user: User }>(
       "/users/me/password",
@@ -58,7 +45,7 @@ export const profileApi = {
       return response.user;
     } catch (error) {
       if (error instanceof ApiError && error.status === 413) {
-        throw new ApiError("Ảnh quá lớn, tối đa 2MB", 413);
+        throw new ApiError("Image is too large. Maximum size is 2 MB.", 413);
       }
       throw error;
     }

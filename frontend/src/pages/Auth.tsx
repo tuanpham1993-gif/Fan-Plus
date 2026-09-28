@@ -42,7 +42,7 @@ export default function Auth({ mode }: { mode: string }) {
     setBusy(true);
     try {
       if (mode === "login") {
-        // TODO: khi có widget reCAPTCHA thật, lấy token từ widget và truyền vào login()
+        // TODO: Read the token from the reCAPTCHA widget once it is available.
         const u = await login(email, password);
         navigate(
           params.get("next")
@@ -61,16 +61,14 @@ export default function Auth({ mode }: { mode: string }) {
             name,
             email,
             password,
-            // TẠM THỜI: dùng token test cố định vì UI captcha đang bị ẩn.
-            // Khi triển khai captcha thật, xóa giá trị mặc định này và bắt
-            // buộc truyền captchaToken thật từ widget vào.
+            // Temporary: use a fixed test token while the captcha UI is hidden.
+            // Remove the default and require a real widget token when captcha is implemented.
             captcha_token: "PASSED_TEST_TOKEN",
           });
-          notify(result.message || "Đăng ký thành công, vui lòng đăng nhập.");
+          notify(result.message || "Registration successful. Please sign in.");
           navigate("/login");
-          // TODO: nếu sau này backend triển khai xác thực email thật,
-          // đổi navigate("/login") thành navigate("/verify-email?email=...")
-          // và khôi phục lại luồng gọi authApi.verify()/resendVerification().
+          // TODO: If the backend adds email verification, redirect to /verify-email
+          // and restore calls to authApi.verify()/resendVerification().
           return;
         }
 
@@ -431,33 +429,6 @@ export default function Auth({ mode }: { mode: string }) {
             <p className="auth-alternate">
               New around here? <Link to="/register">Create a demo profile</Link>
             </p>
-            <div className="demo-accounts">
-              <span className="eyebrow">TRY A DEMO ACCOUNT</span>
-              <div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEmail("fan@fanhub.demo");
-                    setPassword(DEMO_PASSWORD);
-                  }}
-                >
-                  Fan account <Icon name="user" size={15} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEmail("admin@fanhub.demo");
-                    setPassword(DEMO_PASSWORD);
-                  }}
-                >
-                  Admin account <Icon name="shield" size={15} />
-                </button>
-              </div>
-              <small>
-                Both use <code>{DEMO_PASSWORD}</code>. Click Sign in after
-                choosing an account.
-              </small>
-            </div>
           </>
         )}
         {mode === "register" && (

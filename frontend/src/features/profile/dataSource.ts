@@ -14,6 +14,11 @@ export interface EditableProfile {
   avatar?: string | null;
   favorite_fandoms: string[];
   display_preferences?: Record<string, unknown>;
+  phone?: string | null;
+  birthday?: string | null;
+  gender?: string | null;
+  city?: string | null;
+  bio?: string | null;
 }
 
 export interface ProfileUpdateResult {
@@ -64,6 +69,11 @@ export const profileDataSource = {
       avatar: input.avatar,
       favorite_fandoms: favoriteFandoms,
       display_preferences: input.display_preferences,
+      phone: input.phone,
+      birthday: input.birthday,
+      gender: input.gender,
+      city: input.city,
+      bio: input.bio,
     };
 
     if (serverMode) {
@@ -78,6 +88,15 @@ export const profileDataSource = {
         ...(normalized.display_preferences !== undefined
           ? { display_preferences: normalized.display_preferences }
           : {}),
+        ...(normalized.phone !== undefined ? { phone: normalized.phone } : {}),
+        ...(normalized.birthday !== undefined
+          ? { birthday: normalized.birthday }
+          : {}),
+        ...(normalized.gender !== undefined
+          ? { gender: normalized.gender }
+          : {}),
+        ...(normalized.city !== undefined ? { city: normalized.city } : {}),
+        ...(normalized.bio !== undefined ? { bio: normalized.bio } : {}),
       };
 
       const response = await profileApi.update(payload);

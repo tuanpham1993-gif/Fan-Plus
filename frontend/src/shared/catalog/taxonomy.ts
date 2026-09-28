@@ -14,18 +14,68 @@ export const FANDOM_CATEGORY_IDS = [
 export type FandomCategoryId = (typeof FANDOM_CATEGORY_IDS)[number];
 
 export const FANDOM_CATEGORIES: readonly Category[] = [
-  { id: "anime", name: "Anime", description: "Stories beyond the ordinary", icon: "sparkles", color: "#c3b0fc" },
-  { id: "gaming", name: "Gaming", description: "Your next great adventure", icon: "gamepad", color: "#a7dab6" },
-  { id: "movies", name: "Movies", description: "Made for the big screen", icon: "film", color: "#f3b08d" },
-  { id: "tv", name: "TV Shows", description: "One more episode", icon: "tv", color: "#96c6f1" },
-  { id: "kpop", name: "K-Pop", description: "Feel every beat", icon: "music", color: "#ef9dbf" },
-  { id: "comics", name: "Comics", description: "Every panel a possibility", icon: "bolt", color: "#eed385" },
-  { id: "manga", name: "Manga", description: "A world between the pages", icon: "book", color: "#bdd1cd" },
-  { id: "cosplay", name: "Cosplay", description: "Bring your world to life", icon: "mask", color: "#dda9ef" },
+  {
+    id: "anime",
+    name: "Anime",
+    description: "Stories beyond the ordinary",
+    icon: "sparkles",
+    color: "#c3b0fc",
+  },
+  {
+    id: "gaming",
+    name: "Gaming",
+    description: "Your next great adventure",
+    icon: "gamepad",
+    color: "#a7dab6",
+  },
+  {
+    id: "movies",
+    name: "Movies",
+    description: "Made for the big screen",
+    icon: "film",
+    color: "#f3b08d",
+  },
+  {
+    id: "tv",
+    name: "TV Shows",
+    description: "One more episode",
+    icon: "tv",
+    color: "#96c6f1",
+  },
+  {
+    id: "kpop",
+    name: "K-Pop",
+    description: "Feel every beat",
+    icon: "music",
+    color: "#ef9dbf",
+  },
+  {
+    id: "comics",
+    name: "Comics",
+    description: "Every panel a possibility",
+    icon: "bolt",
+    color: "#eed385",
+  },
+  {
+    id: "manga",
+    name: "Manga",
+    description: "A world between the pages",
+    icon: "book",
+    color: "#bdd1cd",
+  },
+  {
+    id: "cosplay",
+    name: "Cosplay",
+    description: "Bring your world to life",
+    icon: "mask",
+    color: "#dda9ef",
+  },
 ] as const;
 
 const ID_SET = new Set<string>(FANDOM_CATEGORY_IDS);
-const CATEGORY_BY_ID = new Map(FANDOM_CATEGORIES.map((category) => [category.id, category]));
+const CATEGORY_BY_ID = new Map(
+  FANDOM_CATEGORIES.map((category) => [category.id, category]),
+);
 
 export function isFandomCategoryId(value: unknown): value is FandomCategoryId {
   return typeof value === "string" && ID_SET.has(value);
@@ -35,13 +85,14 @@ export function categoryLabel(value: string) {
   return CATEGORY_BY_ID.get(value)?.name || value;
 }
 
-
-export function canonicalizeCategories(input: readonly Category[] = []): Category[] {
-  // Nếu lấy được danh mục từ Backend Flask -> Trả về trực tiếp danh mục từ Backend!
+export function canonicalizeCategories(
+  input: readonly Category[] = [],
+): Category[] {
+  // Use categories from the Flask backend when available.
   if (input && input.length > 0) {
     return Array.from(input);
   }
 
-  // Nếu Backend chưa chạy -> Mới dùng mảng mẫu FANDOM_CATEGORIES
+  // Fall back to the sample FANDOM_CATEGORIES when the backend is unavailable.
   return [...FANDOM_CATEGORIES];
 }
