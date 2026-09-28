@@ -30,3 +30,5 @@ backend/uploads/avatars/*
 .idea/
 .DS_Store
 Thumbs.db
+backend/models/__pycache__/__init__.cpython-311.pyc
+backend/models/__pycache__/__init__.cpython-311.pyc

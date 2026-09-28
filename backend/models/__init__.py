@@ -31,5 +31,6 @@ __all__ = [
     'CharacterContent',
     'ContentReaction',
     'ContentMedia',
-    'Review'
+    'Review',
+    'CommunityPost', 'CommunityComment', 'CommunityReaction'
 ]
