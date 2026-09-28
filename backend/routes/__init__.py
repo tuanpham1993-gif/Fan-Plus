@@ -7,6 +7,7 @@ from routes.content import content_bp
 from routes.bookmark import bookmark_bp
 from routes.event import event_bp
 from routes.review import review_bp
+from routes.admin_workspace import admin_ws_bp
 
 
 def register_blueprints(app):
@@ -19,3 +20,4 @@ def register_blueprints(app):
     app.register_blueprint(bookmark_bp)
     app.register_blueprint(event_bp)
     app.register_blueprint(review_bp)
+    app.register_blueprint(admin_ws_bp)

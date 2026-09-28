@@ -1,12 +1,13 @@
-import React from "react";
+import React, { useState } from "react";
 import { openLore } from "../features/Lore";
 import { useHomeCatalog } from "../features/catalog/hooks";
 import { useAuth } from "../features/auth/AuthProvider";
-import { Link } from "../lib/router";
+import { Link, navigate } from "../lib/router";
 import { Icon, ContentCard, Notice, Skeleton } from "../components/ui";
 
 export default function Home() {
   const { user } = useAuth();
+  const [eventQuery, setEventQuery] = useState("");
   const {
     categories,
     picks,
@@ -45,6 +46,31 @@ export default function Home() {
               Meet your people <Icon name="external" size={15} />
             </Link>
           </div>
+          <form
+            className="hero-event-search"
+            role="search"
+            aria-label="Search events"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const q = eventQuery.trim();
+              navigate("/events" + (q ? "?q=" + encodeURIComponent(q) : ""));
+            }}
+          >
+            <label className="search-input">
+              <Icon name="calendar" size={16} />
+              <input
+                type="search"
+                aria-label="Search events by name, venue or city"
+                placeholder="Find events: cosplay, Hanoi, festival..."
+                maxLength={100}
+                value={eventQuery}
+                onChange={(e) => setEventQuery(e.target.value)}
+              />
+            </label>
+            <button type="submit" className="btn btn-secondary">
+              Search events
+            </button>
+          </form>
           <div className="hero-footnote">
             <div className="mini-worlds">
               <span><Icon name="gamepad" size={17} /></span>

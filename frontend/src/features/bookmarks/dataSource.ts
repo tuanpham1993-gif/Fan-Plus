@@ -249,7 +249,7 @@ const apiContentDataSource: ContentBookmarkDataSource = {
   },
 
   async set(_db, _user, content, bookmarked) {
-    const result = await bookmarkApi.setContent(content.id, bookmarked);
+    const result = await bookmarkApi.setContent(content, bookmarked);
     return {
       bookmarked: result.bookmarked,
       item: result.item,

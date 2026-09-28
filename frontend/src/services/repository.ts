@@ -159,6 +159,63 @@ async function setPassword(email: string, password: string) {
   records[email] = { salt, hash: await verifier(password, salt) };
   sessionStorage.setItem(CREDENTIALS_KEY, JSON.stringify(records));
 }
+const SEEDED_CATEGORY_IDS: Record<string, number> = {
+  anime: 1,
+  gaming: 2,
+  movies: 3,
+  tv: 4,
+};
+
+/** Resolve a frontend category key to the numeric id used by the Flask API. */
+async function serverCategoryId(db: Database, key: string): Promise<number> {
+  if (SEEDED_CATEGORY_IDS[key]) return SEEDED_CATEGORY_IDS[key];
+  if (/^\d+$/.test(key)) return Number(key);
+  const name = db.categories.find((c) => c.id === key)?.name?.toLowerCase();
+  const raw: any = await api("/categories");
+  const list: any[] = Array.isArray(raw) ? raw : raw?.data || [];
+  const match = list.find((c) => String(c.name).toLowerCase() === name);
+  if (!match)
+    throw new AppError(
+      "This category is not available yet. Choose another category or ask an administrator to create it.",
+    );
+  return Number(match.category_id ?? match.id);
+}
+
+/** Fan stories are stored as POST content with status PENDING until an administrator approves them. */
+async function submitToServer(
+  db: Database,
+  data: Pick<Submission, "title" | "categoryId" | "fandom" | "body">,
+) {
+  // The Flask API authenticates the request; a 401 there asks the user to sign in again.
+  if (data.title.trim().length < 5 || data.title.length > 120)
+    throw new AppError("Use a title of 5-120 characters.");
+  if (data.body.trim().length < 80 || data.body.length > 15000)
+    throw new AppError("Write a story of at least 80 characters.");
+  const form = new FormData();
+  form.set("category_id", String(await serverCategoryId(db, data.categoryId)));
+  form.set("title", data.title.trim());
+  form.set(
+    "body",
+    data.fandom.trim()
+      ? `${data.body.trim()}
+
+Fandom: ${data.fandom.trim()}`
+      : data.body.trim(),
+  );
+  form.set("content_type", "POST");
+  const created: any = await api("/contents", { method: "POST", body: form });
+  db.submissions.unshift({
+    ...data,
+    id: String(created?.id ?? id("s")),
+    userId: String(created?.author_id ?? ""),
+    status: created?.status === "DONE" ? "approved" : "pending",
+    reason: "",
+    createdAt: created?.created_at ?? new Date().toISOString(),
+  });
+  persist(db);
+  return db;
+}
+
 export const repository = {
   async load(): Promise<Database> {
     await sleep();
@@ -475,8 +532,9 @@ export const repository = {
     data: Pick<Submission, "title" | "categoryId" | "fandom" | "body">,
   ) {
     await sleep();
-    const db = readDb(),
-      u = actor(db);
+    const db = readDb();
+    if (serverMode) return submitToServer(db, data);
+    const u = actor(db);
     if (!db.categories.some((c) => c.id === data.categoryId))
       throw new AppError("Choose a valid category.");
     if (

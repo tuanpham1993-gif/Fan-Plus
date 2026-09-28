@@ -17,13 +17,16 @@ def update_user_profile():
     user = g.current_user
     data = request.get_json(silent=True) or {}
 
-    updated_user = user_crud.update_user_profile(
-        user=user,
-        name=data.get('name'),
-        avatar=data.get('avatar'),
-        favorite_fandoms=data.get('favorite_fandoms'),
-        display_preferences=data.get('display_preferences')
-    )
+    try:
+        updated_user = user_crud.update_user_profile(
+            user=user,
+            name=data.get('name'),
+            avatar=data.get('avatar'),
+            favorite_fandoms=data.get('favorite_fandoms'),
+            display_preferences=data.get('display_preferences')
+        )
+    except ValueError as error:
+        return jsonify({'message': str(error)}), 400
 
     return jsonify({
         'message': 'Cập nhật hồ sơ cá nhân thành công',

@@ -34,7 +34,8 @@ class User(db.Model):
             'avatar': self.avatar,
             'role': self.role,
             'status': self.status,
-            'display_preferences': self.get_display_preferences(),
+            'display_preferences': {k: v for k, v in self.get_display_preferences().items() if k != 'favorite_fandoms'},
+            'favorite_fandoms': self.get_display_preferences().get('favorite_fandoms', []),
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }

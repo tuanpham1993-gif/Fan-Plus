@@ -3,8 +3,14 @@ from extensions import db
 from models.contentreaction import ContentReaction
 from sqlalchemy import func, case
 
-def build_content_query(category_id=None, title=None, content_type=None):
+def build_content_query(category_id=None, title=None, content_type=None, statuses=None, author_id=None):
     query = Content.query
+
+    if statuses:
+        query = query.filter(Content.status.in_(statuses))
+
+    if author_id is not None:
+        query = query.filter(Content.author_id == author_id)
 
     if category_id is not None:
         query = query.filter(Content.category_id == category_id)
@@ -44,9 +50,12 @@ def get_contents(
     skip=0,
     limit=20,
     sort_by="created_at",
-    sort_order="desc"
+    sort_order="desc",
+    statuses=None,
+    author_id=None
 ):
-    query = build_content_query(category_id=category_id,title=title,content_type=content_type)
+    query = build_content_query(category_id=category_id,title=title,content_type=content_type,
+                                statuses=statuses,author_id=author_id)
     total = query.count()
     query = query.outerjoin(ContentReaction,ContentReaction.content_id == Content.id)
 
@@ -75,9 +84,9 @@ def get_contents(
     return total, contents
     
 
-def create_content(author_id,category_id,title,body,content_type,):
+def create_content(author_id,category_id,title,body,content_type,status="PENDING"):
     content = Content(author_id=author_id,category_id=category_id,
-                      title=title,body=body,content_type=content_type)
+                      title=title,body=body,content_type=content_type,status=status)
 
     db.session.add(content)
     db.session.commit()

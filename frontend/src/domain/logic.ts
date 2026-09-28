@@ -141,7 +141,7 @@ export function validateContent(c: Partial<Content>): string | null {
     return "Media must use a local demo path or HTTPS.";
   return null;
 }
-export function calendarFile(event: FanEvent): string {
+export function calendarFile(event: FanEvent, demo = true): string {
   const escape = (x: string) =>
     x
       .replace(/\\/g, "\\\\")
@@ -180,9 +180,9 @@ export function calendarFile(event: FanEvent): string {
       `DTSTAMP:${dt(new Date().toISOString())}`,
       `DTSTART:${dt(event.startsAt)}`,
       `DTEND:${dt(event.endsAt)}`,
-      `SUMMARY:${escape("[DEMO] " + event.title)}`,
+      `SUMMARY:${escape((demo ? "[DEMO] " : "") + event.title)}`,
       `LOCATION:${escape(event.venue + ", " + event.city)}`,
-      `DESCRIPTION:${escape("Fictional event for frontend testing. " + event.description)}`,
+      `DESCRIPTION:${escape((demo ? "Fictional event for frontend testing. " : "") + event.description)}`,
       "END:VEVENT",
       "END:VCALENDAR",
     ]
