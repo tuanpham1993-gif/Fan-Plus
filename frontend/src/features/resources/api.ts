@@ -44,12 +44,12 @@ interface ListResponse<T> {
 }
 
 export const RESOURCE_ENDPOINTS = {
-  categories: "/categories",
-  characters: "/characters",
-  character: (id: number | string) => `/characters/${encodeURIComponent(id)}`,
-  merchandise: "/merchandise",
+  categories: "/api/categories",
+  characters: "/api/characters",
+  character: (id: number | string) => `/api/characters/${encodeURIComponent(id)}`,
+  merchandise: "/api/merchandise",
   merchandiseItem: (id: number | string) =>
-    `/merchandise/${encodeURIComponent(id)}`,
+    `/api/merchandise/${encodeURIComponent(id)}`,
 } as const;
 
 export function imageSource(imageUrl: string | null | undefined) {

@@ -150,16 +150,22 @@ export default function Merchandise() {
     const body = new FormData();
     body.append("category_id", categoryId);
     body.append("name", name.trim());
-    body.append("is_upcoming", String(upcoming));
-    if (characterId || editing) body.append("character_id", characterId);
-    if (tag || editing) body.append("tag", tag);
+    body.append("is_upcoming", upcoming ? "true" : "false");
+    if (characterId) body.append("character_id", characterId);
+    if (tag) body.append("tag", tag);
     if (image) body.append("image", image);
     try {
       await resourceApi.saveMerchandise(editing?.item_id ?? null, body);
       setEditorOpen(false);
       setReloadKey((key) => key + 1);
-    } catch (cause) {
-      setFormError(cause instanceof Error ? cause.message : "Merchandise could not be saved.");
+    } catch (cause: any) {
+      let message = "Merchandise could not be saved.";
+      if (cause instanceof Error) {
+        message = cause.message;
+      } else if (Array.isArray(cause)) {
+        message = cause.map((err: any) => err.msg || JSON.stringify(err)).join(", ");
+      }
+      setFormError(message);
     } finally {
       setBusy(false);
     }
