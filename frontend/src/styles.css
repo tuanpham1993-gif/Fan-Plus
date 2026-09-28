@@ -10082,7 +10082,6 @@ td small {
   overflow-y: auto;
 }
 
-<<<<<<< Updated upstream
 .personal-info-card,
 .password-card {
   min-width: 0;
@@ -10196,38 +10195,29 @@ td small {
     font-size: 1rem;
   }
 }
-=======
+
 .create-post-modal {
   position: relative;
-
   width: min(720px, 100%);
   max-height: calc(100vh - 48px);
-
   overflow-y: auto;
-
   padding: 28px;
   box-sizing: border-box;
-
   border: 1px solid var(
     --border,
     rgba(255, 255, 255, 0.1)
   );
-
   border-radius: 18px;
-
   background: var(
     --surface,
     #171717
   );
-
   color: var(
     --text,
     #ffffff
   );
-
   box-shadow:
     0 24px 80px rgba(0, 0, 0, 0.45);
-
   z-index: 10000;
 }
 
@@ -10263,18 +10253,13 @@ td small {
 .create-post-close {
   display: grid;
   place-items: center;
-
   width: 36px;
   height: 36px;
-
   flex-shrink: 0;
-
   border: 0;
   border-radius: 50%;
-
   background: transparent;
   color: inherit;
-
   cursor: pointer;
 }
 
@@ -10310,24 +10295,18 @@ td small {
 .form-field textarea {
   width: 100%;
   box-sizing: border-box;
-
   padding: 11px 13px;
-
   border: 1px solid var(
     --border,
     rgba(255, 255, 255, 0.12)
   );
-
   border-radius: 10px;
-
   background: var(
     --background,
     #101010
   );
-
   color: inherit;
   font: inherit;
-
   outline: none;
 }
 
@@ -10347,12 +10326,9 @@ td small {
 
 .form-error {
   padding: 11px 13px;
-
   border: 1px solid rgba(255, 80, 80, 0.35);
   border-radius: 10px;
-
   background: rgba(255, 80, 80, 0.08);
-
   font-size: 14px;
 }
 
@@ -10397,4 +10373,3 @@ td small {
     width: 100%;
   }
 }
->>>>>>> Stashed changes
