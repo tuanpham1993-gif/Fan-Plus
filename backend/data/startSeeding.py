@@ -18,14 +18,14 @@ def run_seeding():
 
         seed_categories()
         seed_users()
-        seed_characters()
-        seed_contents()
-        seed_reviews()
-        seed_character_contents()
-        seed_content_reactions()
-        seed_events()
-        seed_feedbacks()
-        seed_content_media()
+        #seed_characters()
+        #seed_contents()
+        #seed_reviews()
+        #seed_character_contents()
+        #seed_content_reactions()
+        #seed_events()
+        #seed_feedbacks()
+        #seed_content_media()
 
         print("Database seeding completed!")
 
