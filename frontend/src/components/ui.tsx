@@ -460,12 +460,10 @@ export function Confirm({
   );
 }
 export const typeLabels: Record<string, string> = {
-  article: "Story",
-  character: "Character",
-  video: "Video",
-  audio: "Audio",
-  gallery: "Gallery",
-  merchandise: "Collectible",
+  news: "News",
+  article: "Article",
+  event: "Event",
+  post: "Post",
 };
 export function BookmarkButton({
   content,
@@ -525,14 +523,27 @@ export function ContentCard({
   content: Content;
   reason?: string;
 }) {
-  const { db, spoilerSafe } = useApp();
+  const { db } = useApp();
   const cat = db?.categories.find((c) => c.id === content.categoryId);
+  const formattedDate = content.publishedAt
+    ? new Date(content.publishedAt).toLocaleDateString()
+    : "";
+
+  const iconName =
+    content.type === "news"
+      ? "book"
+      : content.type === "event"
+        ? "calendar"
+        : content.type === "post"
+          ? "sparkles"
+          : "book";
+
   return (
     <article className="content-card" data-testid="content-card">
       <div className="card-art">
         <Link to={"/content/" + content.id} tabIndex={-1} aria-hidden="true">
           <img
-            src={content.image}
+            src={content.image || "/art/community.svg"}
             alt=""
             width="640"
             height="450"
@@ -544,44 +555,33 @@ export function ContentCard({
           />
         </Link>
         <span className="type-badge">
-          <Icon
-            name={
-              content.type === "video"
-                ? "play"
-                : content.type === "audio"
-                  ? "music"
-                  : content.type === "character"
-                    ? "user"
-                    : "book"
-            }
-            size={12}
-          />
-          {typeLabels[content.type]}
+          <Icon name={iconName} size={12} />
+          {typeLabels[content.type] || content.type}
         </span>
         <BookmarkButton content={content} />
-        {content.spoiler && spoilerSafe && (
-          <span className="spoiler-badge">
-            <Icon name="shield" size={12} />
-            Spoiler flagged
-          </span>
-        )}
       </div>
       <div className="card-body">
         <div className="card-meta">
           <span style={{ color: cat?.color }}>{cat?.name || "Community"}</span>
-          <span className="dot" />
-          <span>{content.fandom}</span>
+          {content.author && (
+            <>
+              <span className="dot" />
+              <span>{content.author}</span>
+            </>
+          )}
         </div>
         <h3>
           <Link to={"/content/" + content.id}>{content.title}</Link>
         </h3>
         <p>{content.description}</p>
         <div className="card-bottom">
-          <span>
-            <Icon name="clock" size={13} />
-            {content.duration}
-          </span>
-          <span title="Editorial score from the fictional demo dataset">
+          {formattedDate && (
+            <span>
+              <Icon name="clock" size={13} />
+              {formattedDate}
+            </span>
+          )}
+          <span title="Rating">
             <Icon name="star" size={13} />
             {content.rating > 0 ? content.rating.toFixed(1) : "New"}
           </span>

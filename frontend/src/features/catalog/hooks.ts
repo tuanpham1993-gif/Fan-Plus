@@ -172,11 +172,16 @@ export function useHomeCatalog(user: User | null) {
     };
   }, [db, favoriteCategory]);
 
+
   const picks = useMemo<PersonalizedPick[]>(() => {
     const deduped = new Map<string, Content>();
+
     for (const content of [...favoriteItems, ...featured]) {
-      if (!deduped.has(content.id)) deduped.set(content.id, content);
+      if (!deduped.has(content.id)) {
+        deduped.set(content.id, content);
+      }
     }
+
     const favoriteCategories = Array.isArray(
       (
         user?.display_preferences as
@@ -187,31 +192,30 @@ export function useHomeCatalog(user: User | null) {
       ? ((user?.display_preferences as { favoriteCategories?: string[] })
           .favoriteCategories as string[])
       : [];
-    const favoriteFandoms = user?.favorite_fandoms ?? [];
+
     return [...deduped.values()]
       .map((content) => {
-        const categoryMatch = favoriteCategories.includes(content.categoryId);
-        const fandomMatch = favoriteFandoms.includes(content.fandom);
+        const categoryMatch = favoriteCategories.includes(
+          content.categoryId,
+        );
+
         return {
           content,
           reason: categoryMatch
             ? `Because you like ${categoryLabel(content.categoryId)}`
-            : fandomMatch
-              ? `From ${content.fandom}, a fandom you follow`
-              : "An editorial discovery",
-          score:
-            content.popularity +
-            (categoryMatch ? 100 : 0) +
-            (fandomMatch ? 150 : 0),
+            : "An editorial discovery",
+          score: categoryMatch ? 100 : 0,
         };
       })
       .sort((a, b) => b.score - a.score)
       .slice(0, 4)
-      .map(({ content, reason }) => ({ content, reason }));
+      .map(({ content, reason }) => ({
+        content,
+        reason,
+      }));
   }, [
     featured,
     favoriteItems,
-    user?.favorite_fandoms,
     user?.display_preferences,
   ]);
 

@@ -73,4 +73,6 @@ class Content(db.Model):
     )
 
     bookmarks = db.relationship("Bookmark", back_populates="content")
-    event =  db.relationship("Event", back_populates="content")
+    event = db.relationship("Event", back_populates="content", uselist=False)
+    author = db.relationship("User", foreign_keys=[author_id])
+    category = db.relationship("Category", foreign_keys=[category_id])

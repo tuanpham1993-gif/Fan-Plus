@@ -1,8 +1,21 @@
-import type { Category, Content, Page } from "../../domain/types";
-import { apiClient } from "../../shared/http/client";
-import type { FandomCategoryId } from "../../shared/catalog/taxonomy";
 
-export type CatalogSort = "latest" | "popular" | "az";
+import type {
+  Category,
+  Content,
+  ContentDetail,
+  Page,
+} from "../../domain/types";
+
+import { apiClient } from "../../shared/http/client";
+
+import type {
+  FandomCategoryId,
+} from "../../shared/catalog/taxonomy";
+
+export type CatalogSort =
+  | "latest"
+  | "popular"
+  | "az";
 
 export interface CatalogQuery {
   q?: string;
@@ -35,67 +48,94 @@ export interface ContentRatingSummary {
 
 export interface ContentDetailPayload {
   content: Content;
-  related: Content[];
+  event: BackendEvent | null;
   rating: ContentRatingSummary;
+  related?: Content[];
 }
 
 export const CATALOG_ENDPOINTS = {
   categories: "/categories",
+
   contents: "/contents",
-  contentDetail: (id: string) => `/contents/${encodeURIComponent(id)}`,
-  contentRating: "/reviews",
-  contentRatingSummary: (id: string) =>
-    `/reviews/content/${encodeURIComponent(id)}/summary`,
+
+  contentDetail: (id: string) =>
+    `/contents/${encodeURIComponent(id)}`,
+
+  contentRating: (id: string) =>
+    `/contents/${encodeURIComponent(id)}/rating`,
 } as const;
 
 export function normalizeContent(raw: any): Content {
   if (!raw) return {} as Content;
-  const createdDate = raw.created_at ? new Date(raw.created_at) : new Date();
-  const year =
-    raw.year ||
-    (isNaN(createdDate.getFullYear()) ? 2026 : createdDate.getFullYear());
 
-  const categorySlugMap: Record<number, FandomCategoryId> = {
+  const rawStatus = raw.status ? String(raw.status).toUpperCase() : "";
+  const status: Content["status"] =
+    rawStatus === "DONE"
+      ? "published"
+      : rawStatus === "REJECTED"
+        ? "rejected"
+        : rawStatus === "PENDING"
+          ? "pending"
+          : "published";
+
+  const rawType = raw.content_type ? String(raw.content_type).toLowerCase() : (raw.type ? String(raw.type).toLowerCase() : "article");
+  const type: Content["type"] =
+    rawType === "news" || rawType === "event" || rawType === "post" ? (rawType as Content["type"]) : "article";
+
+  const catSlug = raw.category?.slug || raw.category_slug || (typeof raw.category_id === "string" ? raw.category_id : null);
+  const categorySlugMap: Record<number, string> = {
     1: "anime",
     2: "gaming",
     3: "movies",
     4: "tv",
   };
+  const categoryId =
+    catSlug ||
+    (typeof raw.category_id === "number" ? categorySlugMap[raw.category_id] : null) ||
+    "anime";
 
-  const catId =
-    typeof raw.category_id === "number"
-      ? categorySlugMap[raw.category_id] || "anime"
-      : raw.category_slug || "anime";
-  const characterName =
-    raw.characters && raw.characters.length > 0 ? raw.characters[0].name : null;
+  let mediaList: any[] = [];
+  if (Array.isArray(raw.media)) {
+    mediaList = raw.media.map((item: any, idx: number) => ({
+      id: item.id || idx,
+      media_url: item.media_url || item.url || "",
+      media_type: item.media_type || "IMAGE",
+    }));
+  }
+
+  const firstMediaUrl = mediaList.length > 0 ? mediaList[0].media_url : undefined;
+  const image = firstMediaUrl || raw.image || raw.cover_image || raw.mediaUrl || "/art/community.svg";
+
+  let ratingVal = 0;
+  if (raw.rating && typeof raw.rating.average === "number") {
+    ratingVal = raw.rating.average;
+  } else if (typeof raw.rating === "number") {
+    ratingVal = raw.rating;
+  }
+
+  let authorName = "Unknown author";
+  if (raw.author && typeof raw.author === "object" && raw.author.name) {
+    authorName = raw.author.name;
+  } else if (typeof raw.author_name === "string" && raw.author_name) {
+    authorName = raw.author_name;
+  } else if (typeof raw.author === "string" && raw.author) {
+    authorName = raw.author;
+  }
 
   return {
     id: String(raw.id || ""),
     title: raw.title || "",
-    description: raw.body
-      ? raw.body.substring(0, 120) + "..."
-      : raw.summary || "",
+    description: raw.description || (raw.body ? raw.body.substring(0, 120) + "..." : ""),
     body: raw.body || raw.content || "",
-    categoryId: catId as FandomCategoryId,
-    fandom: characterName || raw.fandom || "General Community",
-    type: (raw.content_type
-      ? raw.content_type.toLowerCase()
-      : raw.type || "article") as Content["type"],
-    genre: raw.genre || "General",
-    image:
-      raw.image ||
-      raw.cover_image ||
-      "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800",
-    year,
-    publishedAt: raw.created_at || new Date().toISOString(),
-    popularity: Number(raw.like_count || 0),
-    rating: 4.8,
-    duration: "5 min read",
-    tags: Array.isArray(raw.tags) ? raw.tags : [],
-    status: raw.status === "DONE" ? "published" : "published",
-    author: raw.author_name || `Author #${raw.author_id || 1}`,
-    spoiler: false,
-    sourceLabel: "Backend Content",
+    categoryId,
+    type,
+    image,
+    publishedAt: raw.created_at || raw.publishedAt || new Date().toISOString(),
+    rating: ratingVal,
+    author: authorName,
+    status,
+    mediaUrl: firstMediaUrl || raw.mediaUrl,
+    media: mediaList,
   };
 }
 
@@ -154,8 +194,8 @@ export function catalogSearchParams(query: CatalogQuery) {
 export const catalogApi = {
   categories: async (signal?: AbortSignal): Promise<Category[]> => {
     try {
-      const res: any = await apiClient.get("/categories", { signal });
-      const rawList = Array.isArray(res) ? res : res?.data || [];
+      const res: any = await apiClient.get(CATALOG_ENDPOINTS.categories, { signal });
+      const rawList = Array.isArray(res) ? res : (res?.items || res?.data || []);
       return rawList.map(normalizeCategory);
     } catch {
       return [];
@@ -174,14 +214,11 @@ export const catalogApi = {
 
     const rawList = Array.isArray(res)
       ? res
-      : res?.items || res?.contents || [];
+      : (res?.items || res?.contents || []);
     const items = rawList.map(normalizeContent);
     const total = res?.total ?? res?.count ?? items.length;
     const pageSize = query.pageSize || 9;
     const page = query.page || 1;
-
-    const years = [...new Set(items.map((c: Content) => c.year))] as number[];
-    years.sort((a, b) => b - a);
 
     return {
       items,
@@ -190,13 +227,9 @@ export const catalogApi = {
       pageSize,
       pageCount: Math.ceil(total / pageSize) || 1,
       facets: {
-        fandoms: [
-          ...new Set(items.map((c: Content) => c.fandom)),
-        ].sort() as string[],
-        genres: [
-          ...new Set(items.map((c: Content) => c.genre)),
-        ].sort() as string[],
-        years,
+        fandoms: [],
+        genres: [],
+        years: [],
       },
     };
   },
@@ -208,35 +241,47 @@ export const catalogApi = {
     const res: any = await apiClient.get(CATALOG_ENDPOINTS.contentDetail(id), {
       signal,
     });
+
     const rawContent = res?.content || res;
-    const rawRelated = res?.related || [];
-    let rating = { userRating: 0, average: 0, count: 0 };
-    try {
-      rating = await apiClient.get<ContentRatingSummary>(
-        CATALOG_ENDPOINTS.contentRatingSummary(id),
-        { signal },
-      );
-    } catch {
-      /* the page still renders without the rating summary */
-    }
+    const rawEvent = res?.event || null;
+    const rawRating = rawContent?.rating || res?.rating;
+
+    const rating: ContentRatingSummary = {
+      userRating: 0,
+      average: typeof rawRating?.average === "number" ? rawRating.average : (typeof rawRating === "number" ? rawRating : 0),
+      count: typeof rawRating?.count === "number" ? rawRating.count : 0,
+    };
+
     return {
-      content: { ...normalizeContent(rawContent), rating: rating.average },
-      related: rawRelated.map(normalizeContent),
+      content: normalizeContent(rawContent),
+      event: rawEvent,
       rating,
     };
   },
 
-  /** One review per user and content: POST /reviews creates it or updates the existing one. */
   rate: async (
     id: string,
     value: number,
     signal?: AbortSignal,
   ): Promise<ContentRatingSummary> => {
-    const res: any = await apiClient.post(
-      CATALOG_ENDPOINTS.contentRating,
-      { content_id: Number(id), rating: value },
-      { signal },
-    );
-    return res?.summary || { userRating: value, average: value, count: 1 };
+    try {
+      const res: any = await apiClient.put(
+        CATALOG_ENDPOINTS.contentRating(id),
+        { value },
+        { signal },
+      );
+
+      return {
+        userRating: res?.userRating ?? value,
+        average: res?.average ?? value,
+        count: res?.count ?? 1,
+      };
+    } catch {
+      return {
+        userRating: value,
+        average: value,
+        count: 1,
+      };
+    }
   },
 };
