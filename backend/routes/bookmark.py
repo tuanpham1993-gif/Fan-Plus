@@ -1,3 +1,6 @@
+from pydantic import ValidationError
+from extensions import db
+from models.content import Content
 from flask import Blueprint, request, jsonify
 from middleware.auth_middleware import token_required
 from flask import Blueprint, request, jsonify, g
@@ -21,9 +24,18 @@ bookmark_bp = Blueprint("bookmark",__name__,url_prefix="/bookmarks")
 def create_bookmark_api():
     user_id = g.current_user.id
 
-    data = BookmarkCreate.model_validate(
-        request.get_json()
-    )
+    try:
+        data = BookmarkCreate.model_validate(request.get_json(silent=True) or {})
+    except ValidationError:
+        return jsonify({"message": "content_id is required"}), 400
+
+    if db.session.get(Content, data.content_id) is None:
+        return jsonify({"message": "Content not found"}), 404
+
+    # Saving the same item twice is harmless: return the existing bookmark.
+    existing = get_bookmark(user_id=user_id, content_id=data.content_id)
+    if existing is not None:
+        return jsonify(BookmarkResponse.model_validate(existing).model_dump(mode="json")), 200
 
     bookmark = create_bookmark(
         user_id=user_id,

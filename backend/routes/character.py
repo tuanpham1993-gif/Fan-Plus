@@ -11,7 +11,7 @@ from schema.character import (
 
 from crud import character_crud
 
-from middleware.auth_middleware import token_required
+from middleware.auth_middleware import token_required, admin_required
 
 
 character_bp = Blueprint(
@@ -85,7 +85,7 @@ def get_character_api(character_id):
 
 
 @character_bp.post("")
-@token_required
+@admin_required
 def create_character_api():
 
     data = request.form.to_dict()
@@ -168,7 +168,7 @@ def create_character_api():
 
 
 @character_bp.put("/<int:character_id>")
-@token_required
+@admin_required
 def update_character_api(character_id):
 
     existing_character = (
@@ -269,7 +269,7 @@ def update_character_api(character_id):
 
 
 @character_bp.delete("/<int:character_id>")
-@token_required
+@admin_required
 def delete_character_api(character_id):
 
     character, err_msg, status_code = (

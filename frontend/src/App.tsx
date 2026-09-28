@@ -13,6 +13,7 @@ const Home = React.lazy(() => import("./pages/Home"));
 const Explore = React.lazy(() => import("./pages/Explore"));
 const Detail = React.lazy(() => import("./pages/Detail"));
 const Events = React.lazy(() => import("./pages/Events"));
+const EventForm = React.lazy(() => import("./pages/EventForm"));
 const Auth = React.lazy(() => import("./pages/Auth"));
 const Account = React.lazy(() => import("./pages/Account"));
 const Admin = React.lazy(() => import("./pages/Admin"));
@@ -67,6 +68,7 @@ export default function App() {
       "/submit",
       "/feedback",
       "/admin",
+      "/events/new",
     ]);
     const isPublicAuthRoute = [
       "/login",
@@ -93,6 +95,7 @@ export default function App() {
       "/": "Discover",
       "/explore": "Explore",
       "/events": "Events",
+      "/events/new": "Create event",
       "/showcase": "Showcase",
       "/categories": "Explore categories",
       "/characters": "Characters",
@@ -159,6 +162,18 @@ export default function App() {
   )
     page = <Detail key={pathname} id={decodeURIComponent(pathname.slice(9))} />;
   else if (pathname === "/events") page = <Events />;
+  else if (pathname === "/events/new") page = <EventForm key={user?.id || "visitor"} />;
+  else if (
+    pathname.startsWith("/events/") &&
+    pathname.endsWith("/edit") &&
+    pathname.split("/").length === 4
+  )
+    page = (
+      <EventForm
+        key={pathname + (user?.id || "")}
+        id={decodeURIComponent(pathname.split("/")[2])}
+      />
+    );
   else if (pathname.startsWith("/events/") && pathname.split("/").length === 3)
     page = <Events key={pathname} id={decodeURIComponent(pathname.slice(8))} />;
   else if (pathname === "/releases") page = <Releases />;

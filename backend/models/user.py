@@ -2,6 +2,7 @@ import json
 from datetime import datetime
 from extensions import db
 
+
 class User(db.Model):
     __tablename__ = 'users'
 
@@ -28,11 +29,14 @@ class User(db.Model):
             return {"theme": "dark", "font_size": "medium"}
 
     def to_dict(self):
+        preferences = self.get_display_preferences()
         favorite_fandoms = [
             fandom.strip()
             for fandom in (self.favorite_fandoms or '').split(',')
             if fandom.strip()
         ]
+        if not favorite_fandoms and isinstance(preferences.get('favorite_fandoms'), list):
+            favorite_fandoms = preferences['favorite_fandoms']
         return {
             'id': self.id,
             'name': self.name,
@@ -41,7 +45,7 @@ class User(db.Model):
             'favorite_fandoms': favorite_fandoms,
             'role': self.role,
             'status': self.status,
-            'display_preferences': self.get_display_preferences(),
+            'display_preferences': {k: v for k, v in preferences.items() if k != 'favorite_fandoms'},
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }

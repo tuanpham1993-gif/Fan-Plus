@@ -39,6 +39,7 @@ export interface Content {
   sourceLabel: string;
   releaseDate?: string;
 }
+/** Event payload of the Flask /events API (see backend/schema/event.py). */
 export interface BackendEvent {
   id: number;
   content_id: number;
@@ -46,9 +47,11 @@ export interface BackendEvent {
   city: string;
   latitude: number | string;
   longitude: number | string;
+  /** ISO with +07:00 offset. */
   start_time: string;
   end_time?: string | null;
   register_url?: string | null;
+  image_url?: string | null;
   created_at?: string;
   updated_at?: string;
   content?: {
@@ -56,9 +59,11 @@ export interface BackendEvent {
     title: string;
     body: string;
     category_id: number;
+    category_name?: string | null;
     author_id: number;
+    author_name?: string | null;
     content_type: string;
-    status: string;
+    status: "PENDING" | "DONE" | "REJECTED";
   };
 }
 

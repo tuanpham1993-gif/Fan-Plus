@@ -47,11 +47,15 @@ def update_user_profile(user, name=None, favorite_fandoms=None, display_preferen
             raise ValueError('Tùy chọn hiển thị phải là một đối tượng JSON')
         merged_preferences = user.get_display_preferences().copy()
         merged_preferences.update(display_preferences)
-        serialized_preferences = json.dumps(
-            merged_preferences,
-            ensure_ascii=False,
-            separators=(',', ':')
-        )
+        merged_preferences.pop('favorite_fandoms', None)
+        try:
+            serialized_preferences = json.dumps(
+                merged_preferences,
+                ensure_ascii=False,
+                separators=(',', ':')
+            )
+        except (TypeError, ValueError):
+            raise ValueError('Tùy chọn hiển thị không hợp lệ')
         if len(serialized_preferences) > 255:
             raise ValueError('Tùy chọn hiển thị không được vượt quá 255 ký tự')
 
@@ -72,10 +76,19 @@ def get_user_dashboard(user_id):
         return None
 
     bookmarks = Bookmark.query.filter_by(user_id=user_id).order_by(Bookmark.created_at.desc()).limit(5).all()
-    bookmarked_items = [bm.to_dict() for bm in bookmarks if bm.content is not None]
+    bookmarked_items = [
+        {'id': bm.id, 'content_id': bm.content_id, 'title': bm.content.title,
+         'content_type': bm.content.content_type,
+         'created_at': bm.created_at.isoformat() if bm.created_at else None}
+        for bm in bookmarks if bm.content is not None
+    ]
 
     user_contents = Content.query.filter_by(author_id=user_id).order_by(Content.created_at.desc()).limit(5).all()
-    recent_activity = [c.to_dict(include_full=False) for c in user_contents]
+    recent_activity = [
+        {'id': c.id, 'title': c.title, 'content_type': c.content_type, 'status': c.status,
+         'created_at': c.created_at.isoformat() if c.created_at else None}
+        for c in user_contents
+    ]
 
     return {
         'greeting': f"Hello, {user.name}! Welcome back to Fan Hub.",

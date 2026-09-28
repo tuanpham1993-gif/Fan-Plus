@@ -77,12 +77,20 @@ export interface ApiRequestOptions extends RequestInit {
 export class ApiError extends Error {
   readonly status: number;
   readonly requestId?: string;
+  /** Per-field validation messages from a Flask `errors` object, if any. */
+  readonly fieldErrors: Record<string, string>;
 
-  constructor(message: string, status = 0, requestId?: string) {
+  constructor(
+    message: string,
+    status = 0,
+    requestId?: string,
+    fieldErrors: Record<string, string> = {},
+  ) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.requestId = requestId;
+    this.fieldErrors = fieldErrors;
   }
 }
 
@@ -148,7 +156,11 @@ function failureFrom(payload: any, status: number) {
     payload?.error?.message ||
     payload?.error ||
     `Request failed (${status}).`;
-  return new ApiError(msg, status, payload?.error?.requestId);
+  const fieldErrors =
+    payload?.errors && typeof payload.errors === "object" && !Array.isArray(payload.errors)
+      ? (payload.errors as Record<string, string>)
+      : {};
+  return new ApiError(msg, status, payload?.error?.requestId, fieldErrors);
 }
 
 export async function api<T>(
@@ -290,6 +302,12 @@ export const apiClient = {
     }),
   delete: <T>(path: string, options: Omit<ApiRequestOptions, "method"> = {}) =>
     api<T>(path, { ...options, method: "DELETE" }),
+  /** Multipart upload; the browser sets the Content-Type boundary itself. */
+  postForm: <T>(
+    path: string,
+    form: FormData,
+    options: Omit<ApiRequestOptions, "method" | "body"> = {},
+  ) => api<T>(path, { ...options, method: "POST", body: form }),
 };
 
 export const json = (method: string, body: unknown): ApiRequestOptions => ({

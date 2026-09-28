@@ -1,0 +1,27 @@
+[
+  {
+    "id": "faq1",
+    "question": "How do I bookmark a story?",
+    "answer": "Sign in, open any story and select the bookmark icon. Your saved items appear in My collection and on your dashboard."
+  },
+  {
+    "id": "faq2",
+    "question": "Can I buy merchandise here?",
+    "answer": "No. Fan Hub Plus is a merchandise showcase only. There is no checkout, payment gateway or order processing."
+  },
+  {
+    "id": "faq3",
+    "question": "How do I submit my own fan story?",
+    "answer": "Sign in and open Submit a fan story. An administrator reviews every submission before it is published in Explore."
+  },
+  {
+    "id": "faq4",
+    "question": "How do I find events near me?",
+    "answer": "Open Events and choose Use my location, or filter by city. Your coordinates stay in the browser and are never saved."
+  },
+  {
+    "id": "faq5",
+    "question": "How do I switch to dark mode or larger text?",
+    "answer": "Use the theme button in the header, or set appearance and text size on your profile page."
+  }
+]

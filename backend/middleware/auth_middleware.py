@@ -29,6 +29,23 @@ def token_required(f):
         return f(*args, **kwargs)
     return decorated
 
+def get_optional_user():
+    """Return the active user behind a valid Bearer token, or None for visitors.
+
+    Public endpoints use this to widen what a signed-in user may see without
+    rejecting anonymous requests.
+    """
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return None
+    payload, error = decode_access_token(auth_header.split(' ')[1])
+    if error or not payload:
+        return None
+    user = User.query.get(payload.get('user_id'))
+    if not user or user.status != 'active':
+        return None
+    return user
+
 def admin_required(f):
     @wraps(f)
     @token_required

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useApp } from "../lib/store";
 import { useAuth } from "../features/auth/AuthProvider";
 import { useAdminDashboard } from "../features/admin/hooks";
+import AdminEventQueue from "../features/events/AdminEventQueue";
 import { serverMode } from "../shared/http/client";
 import { Link, useLocation } from "../lib/router";
 import type {
@@ -481,12 +482,50 @@ export default function Admin() {
     </>
   );
 
+  const renderNav = (pendingCount: number) => (
+    <nav className="admin-nav" aria-label="Admin sections">
+      {sections.map(([id, icon, label]) => (
+        <Link
+          key={id}
+          className={section === id ? "active" : ""}
+          to={"/admin?tab=" + id}
+          onClick={() => setQ("")}
+        >
+          <Icon name={icon} size={18} />
+          <span>{label}</span>
+          {id === "submissions" && pendingCount > 0 && (
+            <span className="count-badge">{pendingCount}</span>
+          )}
+        </Link>
+      ))}
+    </nav>
+  );
+
+  // Event review talks to /events directly, so it works even when the
+  // connected workspace endpoint is unavailable.
+  if (serverMode && section === "events") {
+    return (
+      <>
+        {pageHeader}
+        <div className="admin-layout">
+          {renderNav(0)}
+          <div className="admin-content">
+            <AdminEventQueue />
+          </div>
+        </div>
+      </>
+    );
+  }
+
   if (admin.loading && !admin.data) {
     return (
       <>
         {pageHeader}
-        <div className="admin-content">
-          <Skeleton cards={4} />
+        <div className="admin-layout">
+          {renderNav(0)}
+          <div className="admin-content">
+            <Skeleton cards={4} />
+          </div>
         </div>
       </>
     );
@@ -496,14 +535,19 @@ export default function Admin() {
     return (
       <>
         {pageHeader}
-        <Notice kind="error">
-          <p>
-            {admin.error || "The administrator workspace could not be loaded."}
-          </p>
-          <Button variant="secondary" onClick={() => void admin.reload()}>
-            Retry
-          </Button>
-        </Notice>
+        <div className="admin-layout">
+          {renderNav(0)}
+          <div className="admin-content">
+            <Notice kind="error">
+              <p>
+                {admin.error || "The administrator workspace could not be loaded."}
+              </p>
+              <Button variant="secondary" onClick={() => void admin.reload()}>
+                Retry
+              </Button>
+            </Notice>
+          </div>
+        </div>
       </>
     );
   }
@@ -627,22 +671,7 @@ export default function Admin() {
       {pageHeader}
       {admin.error && <Notice kind="error">{admin.error}</Notice>}
       <div className="admin-layout">
-        <nav className="admin-nav" aria-label="Admin sections">
-          {sections.map(([id, icon, label]) => (
-            <Link
-              key={id}
-              className={section === id ? "active" : ""}
-              to={"/admin?tab=" + id}
-              onClick={() => setQ("")}
-            >
-              <Icon name={icon} size={18} />
-              <span>{label}</span>
-              {id === "submissions" && pending.length > 0 && (
-                <span className="count-badge">{pending.length}</span>
-              )}
-            </Link>
-          ))}
-        </nav>
+        {renderNav(pending.length)}
         <div className="admin-content">
           {section === "overview" ? (
             <>

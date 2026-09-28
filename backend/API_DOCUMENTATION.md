@@ -492,71 +492,105 @@
 
 ## 📅 8. Events (`/events`)
 
-### 8.1 Lấy danh sách sự kiện
+**Quy ước thời gian:** `start_time` / `end_time` lưu trong DB theo giờ Việt Nam (không kèm múi giờ). API luôn trả về kèm offset `+07:00`; khi gửi lên, chuỗi ISO có offset sẽ được quy đổi về giờ VN, chuỗi không có offset được hiểu là giờ VN. `created_at` / `updated_at` là UTC (hậu tố `Z`).
+
+**Trạng thái duyệt** (lấy từ `content.status`): `PENDING` (chờ duyệt) → `DONE` (công khai) hoặc `REJECTED`. Event do user thường tạo luôn là `PENDING`; admin tạo thì `DONE` ngay.
+
+**Mẫu một event trong response:**
+```json
+{
+  "id": 1, "content_id": 4,
+  "location_name": "Saigon Exhibition and Convention Center", "city": "Ho Chi Minh City",
+  "latitude": 10.7298, "longitude": 106.7218,
+  "start_time": "2026-10-10T09:00:00+07:00", "end_time": "2026-10-10T18:00:00+07:00",
+  "register_url": "https://example.com/anime-festival-2026",
+  "image_url": "/uploads/events/1/xxx.png",
+  "created_at": "2026-09-28T02:19:09Z", "updated_at": "2026-09-28T02:19:09Z",
+  "content": {
+    "id": 4, "title": "Anime Festival 2026", "body": "...",
+    "category_id": 1, "category_name": "Anime",
+    "author_id": 2, "author_name": "John Doe",
+    "content_type": "EVENT", "status": "DONE"
+  }
+}
+```
+
+### 8.1 Tìm kiếm / lấy danh sách sự kiện
 - **Endpoint:** `GET /events`
-- **Auth required:** Không
+- **Auth required:** Không (bắt buộc với `scope=mine`, quyền admin với `scope=moderation`)
 - **Query Parameters:**
-  - `city` (string, tùy chọn)
-  - `start_time` (string ISO, tùy chọn)
-  - `end_time` (string ISO, tùy chọn)
-  - `skip` (int, mặc định `0`)
-  - `limit` (int, mặc định `20`)
-  - `sort_by` (string, mặc định `"start_time"`)
-  - `sort_order` (string, mặc định `"asc"`)
-- **Response (200 OK):** `{ "total": int, "items": [...] }`
+  - `scope`: `public` (mặc định, chỉ event `DONE`) | `mine` (mọi event của user đang đăng nhập) | `moderation` (admin)
+  - `status`: chỉ dùng với `scope=moderation` — `PENDING` (mặc định) | `DONE` | `REJECTED` | `ALL`
+  - `q`: từ khoá, khớp tiêu đề, địa điểm hoặc thành phố (không phân biệt hoa thường)
+  - `city`: khớp chính xác tên thành phố (không phân biệt hoa thường)
+  - `date_from`, `date_to`: ngày `YYYY-MM-DD` theo giờ VN, bao gồm hai đầu; lấy event có khoảng thời gian giao với khoảng ngày này
+  - `include_past`: `true|false`. Với `public` mặc định `false` (ẩn event đã kết thúc)
+  - `sort_by`: `start_time` (mặc định) | `created_at` | `updated_at`
+  - `sort_order`: `asc` (mặc định) | `desc`
+  - `skip` (mặc định `0`), `limit` (mặc định `20`, tối đa `100`)
+  - `start_time`, `end_time` (ISO, tương thích cũ): lọc theo giờ bắt đầu
+- **Response (200 OK):** `{ "total": int, "items": [event, ...] }`
+- **Lỗi:** `400` khi tham số ngày/sort/scope không hợp lệ; `401` khi `scope=mine` mà chưa đăng nhập; `403` khi `scope=moderation` mà không phải admin.
 
 ---
 
 ### 8.2 Xem chi tiết sự kiện
 - **Endpoint:** `GET /events/<event_id>`
-- **Auth required:** Không
-- **Response (200 OK):** Thông tin chi tiết sự kiện.
+- **Auth required:** Không. Event chưa `DONE` chỉ người tạo và admin xem được; người khác nhận `404`.
+- **Response (200 OK):** một event.
 
 ---
 
 ### 8.3 Tạo sự kiện mới
 - **Endpoint:** `POST /events`
-- **Auth required:** `Bearer <access_token>`
+- **Auth required:** `Bearer <access_token>` (tài khoản `active`)
 - **Content-Type:** `multipart/form-data`
 - **Form Data:**
-  - `category_id` (int)
-  - `title` (string)
-  - `body` (string)
-  - `location_name` (string)
-  - `city` (string)
-  - `latitude` (float, tùy chọn)
-  - `longitude` (float, tùy chọn)
-  - `start_time` (ISO format string, ví dụ `2026-10-01T08:00:00`)
-  - `end_time` (ISO format string, ví dụ `2026-10-01T17:00:00`)
-  - `register_url` (string, tùy chọn)
-  - `media` (File array, tùy chọn)
-- **Response (201 Created):** Trả về chi tiết bài viết + sự kiện + medias.
+  - `title` (3–255 ký tự), `body` (1–5000 ký tự), `category_id` (int, phải tồn tại)
+  - `city` (≤100), `location_name` (≤255)
+  - `latitude` (-90..90), `longitude` (-180..180) — bắt buộc
+  - `start_time` (ISO, phải ở tương lai), `end_time` (ISO, tùy chọn, phải sau `start_time`)
+  - `register_url` (tùy chọn, chỉ `http(s)://`)
+  - `image` (1 file tùy chọn: JPG/PNG/GIF/WEBP, ≤5 MB, nội dung được kiểm tra đúng định dạng)
+- **Response (201 Created):** event vừa tạo (`PENDING` với user, `DONE` với admin).
+- **Lỗi (400):** `{ "message": "...", "errors": { "<field>": "<lý do>" } }`
 
 ---
 
 ### 8.4 Cập nhật sự kiện
 - **Endpoint:** `PUT /events/<event_id>`
-- **Auth required:** `Bearer <access_token>`
-- **Content-Type:** `application/json`
-- **Body:**
+- **Auth required:** `Bearer <access_token>`. Admin sửa được mọi event; người tạo chỉ sửa được khi event còn `PENDING` (ngược lại `403`).
+- **Content-Type:** `application/json` — chỉ gửi các trường cần đổi:
 ```json
 {
+  "title": "Anime Festival 2026",
+  "body": "...",
+  "category_id": 1,
   "location_name": "Nhà thi đấu Phú Thọ",
-  "city": "TP.HCM",
+  "city": "Ho Chi Minh City",
   "latitude": 10.77,
   "longitude": 106.65,
-  "start_time": "2026-10-01T08:00:00",
-  "end_time": "2026-10-01T18:00:00",
+  "start_time": "2026-10-01T08:00:00+07:00",
+  "end_time": null,
   "register_url": "https://event.example.com"
 }
 ```
-- **Response (200 OK):** Thông tin sự kiện đã cập nhật.
+- **Response (200 OK):** event đã cập nhật.
 
 ---
 
-### 8.5 Xóa sự kiện
+### 8.5 Duyệt sự kiện
+- **Endpoint:** `PATCH /events/<event_id>/status`
+- **Auth required:** `Bearer <admin_access_token>`
+- **Body:** `{ "status": "DONE" | "REJECTED" | "PENDING" }`
+- **Response (200 OK):** event với trạng thái mới.
+
+---
+
+### 8.6 Xóa sự kiện
 - **Endpoint:** `DELETE /events/<event_id>`
 - **Auth required:** `Bearer <admin_access_token>` (Quyền Admin)
+- Xoá event, content, media (kể cả file ảnh), review, reaction và bookmark liên quan trong một transaction.
 - **Response (200 OK):**
 ```json
 {

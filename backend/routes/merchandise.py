@@ -13,7 +13,7 @@ from schema.character import validate_image_file
 
 from services.media import save_file
 
-from middleware.auth_middleware import token_required
+from middleware.auth_middleware import token_required, admin_required
 
 
 merchandise_bp = Blueprint(
@@ -117,7 +117,7 @@ def get_merchandise_detail_api(merchandise_id):
 
 
 @merchandise_bp.post("")
-@token_required
+@admin_required
 def create_merchandise_api():
 
     data = request.form.to_dict()
@@ -198,7 +198,7 @@ def create_merchandise_api():
 
 
 @merchandise_bp.put("/<int:merchandise_id>")
-@token_required
+@admin_required
 def update_merchandise_api(merchandise_id):
 
     existing_item = merchandise_crud.get_merchandise(merchandise_id)
@@ -263,7 +263,7 @@ def update_merchandise_api(merchandise_id):
 
 
 @merchandise_bp.delete("/<int:merchandise_id>")
-@token_required
+@admin_required
 def delete_merchandise_api(merchandise_id):
 
     item, err_msg, status_code = merchandise_crud.delete_merchandise(

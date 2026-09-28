@@ -43,7 +43,9 @@ export const CATALOG_ENDPOINTS = {
   categories: "/categories",
   contents: "/contents",
   contentDetail: (id: string) => `/contents/${encodeURIComponent(id)}`,
-  contentRating: (id: string) => `/contents/${encodeURIComponent(id)}/rating`,
+  contentRating: "/reviews",
+  contentRatingSummary: (id: string) =>
+    `/reviews/content/${encodeURIComponent(id)}/summary`,
 } as const;
 
 export function normalizeContent(raw: any): Content {
@@ -208,31 +210,33 @@ export const catalogApi = {
     });
     const rawContent = res?.content || res;
     const rawRelated = res?.related || [];
+    let rating = { userRating: 0, average: 0, count: 0 };
+    try {
+      rating = await apiClient.get<ContentRatingSummary>(
+        CATALOG_ENDPOINTS.contentRatingSummary(id),
+        { signal },
+      );
+    } catch {
+      /* the page still renders without the rating summary */
+    }
     return {
-      content: normalizeContent(rawContent),
+      content: { ...normalizeContent(rawContent), rating: rating.average },
       related: rawRelated.map(normalizeContent),
-      rating: {
-        userRating: 0,
-        average: 4.5,
-        count: rawContent?.view_count || 1,
-      },
+      rating,
     };
   },
 
+  /** One review per user and content: POST /reviews creates it or updates the existing one. */
   rate: async (
     id: string,
     value: number,
     signal?: AbortSignal,
   ): Promise<ContentRatingSummary> => {
-    try {
-      const res: any = await apiClient.put(
-        CATALOG_ENDPOINTS.contentRating(id),
-        { value },
-        { signal },
-      );
-      return res || { userRating: value, average: value, count: 1 };
-    } catch {
-      return { userRating: value, average: value, count: 1 };
-    }
+    const res: any = await apiClient.post(
+      CATALOG_ENDPOINTS.contentRating,
+      { content_id: Number(id), rating: value },
+      { signal },
+    );
+    return res?.summary || { userRating: value, average: value, count: 1 };
   },
 };
