@@ -86,8 +86,7 @@ function readDb(): Database {
       ].every((k) => Array.isArray(d[k]))
     )
       return d;
-  } catch {
-  }
+  } catch {}
   return initialDatabase();
 }
 function persist(db: Database) {
@@ -116,8 +115,7 @@ function syncLegacyAuthShadow(user: User | null): Database {
     } else {
       sessionStorage.removeItem(SESSION_KEY);
     }
-  } catch {
-  }
+  } catch {}
 
   emit(LEGACY_DB_CHANGED_EVENT);
   return db;

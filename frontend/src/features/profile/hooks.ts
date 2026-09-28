@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { User } from "../../domain/types";
 import { useApp } from "../../lib/store";
 import { useAuth } from "../auth/AuthProvider";
@@ -14,6 +14,25 @@ function messageOf(error: unknown) {
     : "Your profile could not be loaded.";
 }
 
+function hasMeaningfulProfileDiff(current: User | null, next: User): boolean {
+  if (!current) return true;
+
+  const currentFavoriteFandoms = current.favorite_fandoms ?? [];
+  const nextFavoriteFandoms = next.favorite_fandoms ?? [];
+  const currentDisplayPreferences = current.display_preferences ?? {};
+  const nextDisplayPreferences = next.display_preferences ?? {};
+
+  return (
+    current.name !== next.name ||
+    (current.avatar ?? null) !== (next.avatar ?? null) ||
+    current.status !== next.status ||
+    JSON.stringify(currentFavoriteFandoms) !==
+      JSON.stringify(nextFavoriteFandoms) ||
+    JSON.stringify(currentDisplayPreferences) !==
+      JSON.stringify(nextDisplayPreferences)
+  );
+}
+
 export function useProfileSettings() {
   const { user, adoptUser } = useAuth();
   const { setDb } = useApp();
@@ -21,6 +40,7 @@ export function useProfileSettings() {
   const [loading, setLoading] = useState(Boolean(user));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const lastFetchedUserIdRef = useRef<number | string | null>(null);
 
   const load = useCallback(
     async (signal?: AbortSignal) => {
@@ -36,8 +56,13 @@ export function useProfileSettings() {
       try {
         const next = await profileDataSource.current(user, signal);
         if (signal?.aborted) return null;
+
         setProfile(next);
-        adoptUser(next);
+
+        if (hasMeaningfulProfileDiff(user, next)) {
+          adoptUser(next);
+        }
+
         return next;
       } catch (cause) {
         if (!signal?.aborted) setError(messageOf(cause));
@@ -46,14 +71,29 @@ export function useProfileSettings() {
         if (!signal?.aborted) setLoading(false);
       }
     },
-    [user?.id, adoptUser],
+    [user, adoptUser],
   );
 
   useEffect(() => {
+    if (!user) {
+      lastFetchedUserIdRef.current = null;
+      return;
+    }
+
+    if (
+      lastFetchedUserIdRef.current === user.id &&
+      profile &&
+      profile.id === user.id
+    ) {
+      return;
+    }
+
+    lastFetchedUserIdRef.current = user.id;
+
     const controller = new AbortController();
     void load(controller.signal);
     return () => controller.abort();
-  }, [load]);
+  }, [user?.id, load, profile]);
 
   const save = useCallback(
     async (input: EditableProfile): Promise<ProfileUpdateResult> => {

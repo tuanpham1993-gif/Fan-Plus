@@ -4,6 +4,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import type { User } from "../../domain/types";
@@ -40,15 +41,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>("loading");
   const [user, setUser] = useState<User | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const userRef = useRef<User | null>(null);
+
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
 
   const applyUser = useCallback((next: User | null) => {
+    userRef.current = next;
     setUser(next);
-    setStatus(next ? "authenticated" : "unauthenticated");
+    const nextStatus = next ? "authenticated" : "unauthenticated";
+    setStatus(nextStatus);
     if (serverMode) repository.syncLegacyAuthShadow(next);
   }, []);
 
   const refresh = useCallback(async () => {
-    setStatus("loading");
+    const currentUser = userRef.current;
+    if (!currentUser) {
+      setStatus("loading");
+    }
     setError(null);
     try {
       const next = serverMode
@@ -58,6 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return next;
     } catch (cause) {
       setUser(null);
+      userRef.current = null;
       setStatus("unauthenticated");
       setError(messageOf(cause));
       if (serverMode) repository.syncLegacyAuthShadow(null);
