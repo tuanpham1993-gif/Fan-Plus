@@ -31,11 +31,11 @@ def update_feedback_status(feedback_id):
     new_status = data.get('status', '').strip().lower()
 
     if new_status not in ['pending', 'resolved', 'dismissed']:
-        return jsonify({'error': 'Trạng thái không hợp lệ (Chỉ chấp nhận: pending, resolved, dismissed)'}), 400
+        return jsonify({'error': 'Invalid status (Only accepted: pending, resolved, dismissed)'}), 400
 
     updated_fb = feedback_crud.update_feedback_status(fb, new_status)
 
     return jsonify({
-        'message': f'Cập nhật trạng thái phản hồi thành {new_status} thành công',
+        'message': f'Feedback status updated to {new_status} successfully',
         'feedback': updated_fb.to_dict()
     }), 200

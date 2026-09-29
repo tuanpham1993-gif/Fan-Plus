@@ -26,7 +26,7 @@ def register():
 
     existing_user = auth_crud.get_user_by_email(email)
     if existing_user:
-        return jsonify({'message': 'Email đã tồn tại'}), 409
+        return jsonify({'message': 'Email already exists'}), 409
 
     user = auth_crud.create_user(
         name=name,
@@ -37,7 +37,7 @@ def register():
     )
 
     return jsonify({
-        'message': 'Đăng ký tài khoản thành công',
+        'message': 'Account registered successfully',
         'user': user.to_dict()
     }), 201
 
@@ -55,10 +55,10 @@ def login():
 
     user = auth_crud.get_user_by_email(email)
     if not user or not verify_password(user.password_hash, password):
-        return jsonify({'message': 'Email hoặc mật khẩu không chính xác'}), 401
+        return jsonify({'message': 'Incorrect email or password'}), 401
 
     if user.status != 'active':
-        return jsonify({'message': 'Tài khoản đã bị tạm khóa hoặc ngưng hoạt động'}), 401
+        return jsonify({'message': 'Account has been suspended or deactivated'}), 401
 
     access_token = generate_access_token(user.id, user.role)
     refresh_token = generate_and_save_refresh_token(user.id)
@@ -80,13 +80,13 @@ def forgot_password():
     email = data.get('email', '').strip().lower()
     user = auth_crud.get_user_by_email(email)
     if not user:
-        return jsonify({'message': 'Nếu Email tồn tại trong hệ thống, liên kết khôi phục đã được tạo'}), 200
+        return jsonify({'message': 'If the email exists in the system, a recovery link has been created'}), 200
 
     reset_token = auth_crud.create_password_reset_token(user)
     reset_link = f"/reset-password?token={reset_token}"
 
     return jsonify({
-        'message': 'Đã tạo yêu cầu khôi phục mật khẩu thành công',
+        'message': 'Password recovery request created successfully',
         'reset_token': reset_token,
         'reset_link': reset_link
     }), 200
@@ -104,11 +104,11 @@ def reset_password():
 
     user = auth_crud.get_user_by_reset_token(reset_token)
     if not user:
-        return jsonify({'message': 'Mã reset token không hợp lệ hoặc đã hết hạn'}), 400
+        return jsonify({'message': 'Reset token is invalid or has expired'}), 400
 
     auth_crud.update_user_password(user, hash_password(new_password))
 
-    return jsonify({'message': 'Đặt lại mật khẩu mới thành công. Vui lòng đăng nhập lại'}), 200
+    return jsonify({'message': 'Password reset successfully. Please log in again'}), 200
 
 
 @auth_bp.route('/refresh', methods=['POST'])
@@ -117,15 +117,15 @@ def refresh():
     token_str = data.get('refresh_token', '').strip()
 
     if not token_str:
-        return jsonify({'message': 'Thiếu refresh_token trong request'}), 400
+        return jsonify({'message': 'Missing refresh_token in request'}), 400
 
     token_record = auth_crud.get_refresh_token_record(token_str)
     if not token_record or not token_record.is_active():
-        return jsonify({'message': 'Refresh Token không hợp lệ hoặc đã bị đứt hạn / thu hồi'}), 401
+        return jsonify({'message': 'Refresh token is invalid, expired, or revoked'}), 401
 
     user = auth_crud.get_user_by_id(token_record.user_id)
     if not user or user.status != 'active':
-        return jsonify({'message': 'Tài khoản không hợp lệ hoặc bị tạm khóa'}), 401
+        return jsonify({'message': 'Account is invalid or suspended'}), 401
 
     new_access_token = generate_access_token(user.id, user.role)
     return jsonify({
@@ -143,7 +143,7 @@ def logout():
         if token_record:
             auth_crud.revoke_refresh_token_record(token_record)
 
-    return jsonify({'message': 'Đăng xuất thành công'}), 200
+    return jsonify({'message': 'Logged out successfully'}), 200
 
 
 @auth_bp.route('/me', methods=['GET'])

@@ -13,20 +13,20 @@ def get_user_by_id(user_id):
 
 def _normalize_favorite_fandoms(favorite_fandoms):
     if not isinstance(favorite_fandoms, list):
-        raise ValueError('Danh sách fandom không hợp lệ')
+        raise ValueError('Invalid fandom list')
 
     normalized = []
     seen = set()
     for fandom in favorite_fandoms:
         if not isinstance(fandom, str):
-            raise ValueError('Tên fandom không hợp lệ')
+            raise ValueError('Invalid fandom name')
         fandom = fandom.strip()
         if not fandom:
             continue
         if ',' in fandom:
-            raise ValueError('Tên fandom không được chứa dấu phẩy')
+            raise ValueError('Fandom name must not contain commas')
         if len(fandom) > 80:
-            raise ValueError('Mỗi fandom không được dài quá 80 ký tự')
+            raise ValueError('Each fandom must not exceed 80 characters')
         normalized_key = fandom.casefold()
         if normalized_key in seen:
             continue
@@ -34,7 +34,7 @@ def _normalize_favorite_fandoms(favorite_fandoms):
         normalized.append(fandom)
 
     if len(normalized) > 20:
-        raise ValueError('Chỉ được chọn tối đa 20 fandom')
+        raise ValueError('You can select at most 20 fandoms')
     return normalized
 
 
@@ -51,7 +51,7 @@ def _normalize_personal(personal):
     if personal is None:
         return {}
     if not isinstance(personal, dict):
-        raise ValueError('Thông tin cá nhân không hợp lệ')
+        raise ValueError('Invalid personal information')
 
     normalized = {}
     for field in PERSONAL_FIELDS:
@@ -62,16 +62,16 @@ def _normalize_personal(personal):
             normalized[field] = None
             continue
         if not isinstance(value, str):
-            raise ValueError('Thông tin cá nhân phải là văn bản')
+            raise ValueError('Personal information must be text')
 
         value = value.strip()
         if field == 'phone':
             if not PHONE_PATTERN.fullmatch(value):
-                raise ValueError('Số điện thoại chỉ được chứa chữ số, dấu +, khoảng trắng, dấu gạch ngang và ngoặc đơn')
+                raise ValueError('Phone number may only contain digits, +, spaces, hyphens, and parentheses')
             compact_phone = re.sub(r'\s', '', value)
             digit_count = sum(character.isdigit() for character in value)
             if not 8 <= len(compact_phone) <= 20 or digit_count < 8:
-                raise ValueError('Số điện thoại phải có từ 8 đến 20 ký tự (không tính khoảng trắng) và ít nhất 8 chữ số')
+                raise ValueError('Phone number must be 8 to 20 characters (excluding spaces) and contain at least 8 digits')
             normalized[field] = value
         elif field == 'birthday':
             try:
@@ -79,34 +79,34 @@ def _normalize_personal(personal):
                     raise ValueError
                 birthday = date.fromisoformat(value)
             except ValueError:
-                raise ValueError('Ngày sinh phải có định dạng YYYY-MM-DD hợp lệ')
+                raise ValueError('Birthday must be a valid date in YYYY-MM-DD format')
             today = date.today()
             if birthday > today:
-                raise ValueError('Ngày sinh không được ở tương lai')
+                raise ValueError('Birthday must not be in the future')
             age = today.year - birthday.year - ((today.month, today.day) < (birthday.month, birthday.day))
             if age > 120:
-                raise ValueError('Tuổi không được vượt quá 120')
+                raise ValueError('Age must not exceed 120')
             normalized[field] = birthday
         elif field == 'gender':
             if value not in GENDERS:
-                raise ValueError('Giới tính không hợp lệ')
+                raise ValueError('Invalid gender')
             normalized[field] = value
         elif field == 'city':
             if len(value) > 100:
-                raise ValueError('Thành phố không được vượt quá 100 ký tự')
+                raise ValueError('City must not exceed 100 characters')
             normalized[field] = value
         elif field == 'bio':
             if len(value) > 300:
-                raise ValueError('Giới thiệu bản thân không được vượt quá 300 ký tự')
+                raise ValueError('Bio must not exceed 300 characters')
             normalized[field] = value
     return normalized
 
 
 def update_user_profile(user, name=None, favorite_fandoms=None, display_preferences=None, personal=None):
     if name is not None and not isinstance(name, str):
-        raise ValueError('Tên hiển thị không hợp lệ')
+        raise ValueError('Invalid display name')
     if name is not None and name.strip() and len(name.strip()) > 60:
-        raise ValueError('Tên hiển thị không được dài quá 60 ký tự')
+        raise ValueError('Display name must not exceed 60 characters')
 
     normalized_fandoms = None
     if favorite_fandoms is not None:
@@ -115,7 +115,7 @@ def update_user_profile(user, name=None, favorite_fandoms=None, display_preferen
     serialized_preferences = None
     if display_preferences is not None:
         if not isinstance(display_preferences, dict):
-            raise ValueError('Tùy chọn hiển thị phải là một đối tượng JSON')
+            raise ValueError('Display preferences must be a JSON object')
         merged_preferences = user.get_display_preferences().copy()
         merged_preferences.update(display_preferences)
         merged_preferences.pop('favorite_fandoms', None)
@@ -126,9 +126,9 @@ def update_user_profile(user, name=None, favorite_fandoms=None, display_preferen
                 separators=(',', ':')
             )
         except (TypeError, ValueError):
-            raise ValueError('Tùy chọn hiển thị không hợp lệ')
+            raise ValueError('Invalid display preferences')
         if len(serialized_preferences) > 255:
-            raise ValueError('Tùy chọn hiển thị không được vượt quá 255 ký tự')
+            raise ValueError('Display preferences must not exceed 255 characters')
 
     normalized_personal = _normalize_personal(personal)
 
@@ -145,7 +145,7 @@ def update_user_profile(user, name=None, favorite_fandoms=None, display_preferen
         db.session.commit()
     except Exception as exc:
         db.session.rollback()
-        raise ProfileCommitError('Không thể lưu hồ sơ') from exc
+        raise ProfileCommitError('Could not save profile') from exc
     return user
 
 

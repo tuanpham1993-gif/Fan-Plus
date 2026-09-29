@@ -176,7 +176,6 @@ def get_workspace():
     return jsonify({"workspace": workspace()}), 200
 
 
-# ------------------------------------------------------------------ contents
 def _apply_media(content, data):
     ContentMedia.query.filter_by(content_id=content.id).delete()
     order = 0
@@ -260,7 +259,6 @@ def delete_content_ws(content_id):
     return jsonify({"ok": True}), 200
 
 
-# ------------------------------------------------------------------ categories
 @admin_ws_bp.post("/categories")
 @admin_required
 def create_category_ws():
@@ -310,7 +308,6 @@ def delete_category_ws(key):
     return jsonify({"ok": True}), 200
 
 
-# ------------------------------------------------------------------ events
 def _event_fields(data):
     try:
         start = parse_event_datetime(data.get("startsAt"))
@@ -371,7 +368,6 @@ def delete_event_ws(event_id):
     return jsonify({"ok": True}), 200
 
 
-# ------------------------------------------------------------------ fan submissions
 @admin_ws_bp.post("/submissions/<int:content_id>/moderate")
 @admin_required
 def moderate_submission_ws(content_id):
@@ -395,7 +391,6 @@ def moderate_submission_ws(content_id):
     return jsonify({"submission": submission, "publishedContent": published}), 200
 
 
-# ------------------------------------------------------------------ users & feedback
 @admin_ws_bp.put("/users/<int:user_id>/status")
 @admin_required
 def set_user_status_ws(user_id):
@@ -424,7 +419,6 @@ def set_feedback_status_ws(feedback_id):
     return jsonify({"feedback": feedback_json(fb)}), 200
 
 
-# ------------------------------------------------------------------ knowledge base (FAQ, JSON file)
 def _faq_payload():
     data = _body("faq")
     question, answer = (data.get("question") or "").strip(), (data.get("answer") or "").strip()

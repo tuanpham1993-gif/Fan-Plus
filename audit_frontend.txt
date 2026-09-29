@@ -1,0 +1,118 @@
+FRONTEND READ-ONLY AUDIT
+Audit date: 2026-09-28
+Repository: Fan-Plus
+
+TÓM TẮT
+Files scanned: 155 files, 6,114,679 bytes. Excluded: node_modules, dist, dist-vite (generated Vite output), build, .git, coverage, .next, .venv and lock files.
+Candidates: 8 review IDs; no source file was changed or deleted.
+Group counts: A=1, B=2, C=0, D=2, E=1, F=0, G=2.
+Confidence: HIGH=0, MEDIUM=7, LOW=1. Knip/depcheck/ts-prune/ESLint were unavailable in no-install mode, so no finding meets the required HIGH threshold.
+
+MỤC 1: FILE CẦN XÓA (HUMAN REVIEW ONLY)
+Sorted by confidence: MEDIUM, then LOW. These are review candidates only.
+
+FE-F002
+Path: frontend/src/features/http.ts
+Group: B, unreferenced compatibility facade
+Size: 198 bytes. Last modified: 2026-09-27 19:39.
+Reason: re-exports API_BASE_URL, ApiError, api, apiClient, clearCsrf, json, serverMode and ApiRequestOptions from shared/http/client, but no frontend source, test, tool, package script or config imports this facade.
+Evidence: full path/export search in frontend/src, frontend/tests and frontend/tools returned only the file's own export declarations; App routing and Vite config do not discover it.
+Dynamic reference risk: package is private and has no `exports` entry; consumers outside the scanned repository could import it directly. No glob/readdir/dynamic path loader was found.
+Confidence: MEDIUM.
+
+FE-F003
+Path: frontend/src/features/giveaways/hooks.ts
+Group: B, no active consumer
+Size: 4,187 bytes. Last modified: 2026-09-27 11:10.
+Reason: `useGiveaways` is referenced by the old commented-out Giveaway page implementation only. The active frontend/src/features/Giveaways.tsx begins with a null placeholder; frontend/src/App.tsx neither imports that component nor routes /giveaways to it. The Giveaway data source/state are separately exercised by frontend/tests/events-giveaways.test.mjs, so this finding is limited to the hook.
+Evidence: full-text import/call search and static TS/TSX graph. App lazy imports are an explicit list; no route glob, import.meta.glob, readdir, require(variable) or runtime component registry was found.
+Dynamic reference risk: future direct hook imports are possible; no current entry point found.
+Confidence: MEDIUM.
+
+FE-F004
+Path: frontend/src/features/Giveaways.tsx
+Group: E, placeholder plus abandoned implementation
+Size: 25,910 bytes. Last modified: 2026-09-28 14:28.
+Reason: first live export is `function Giveaways() { return null; }`; approximately lines 3-700 are a large block-commented prior implementation. There is no active App import, lazy import, route branch or test import. App sends unknown paths through Utility; Utility describes the giveaway module as illustrative.
+Evidence: full-text and import graph search; App uses explicit React.lazy imports and no file-based route discovery. The giveaway data source/state tests remain active independently; do not infer those files are unused from this page finding.
+Dynamic reference risk: external imports or a future route could use the component. App route changes are manual; no dynamic route loader found.
+Confidence: MEDIUM. The domain data remains tested and the UI may be intentionally paused.
+
+LOW CONFIDENCE / PRESERVE UNTIL OWNER DECIDES
+
+FE-F001
+Path: frontend/evidence/v3-ui-log.txt
+Group: A, generated UI test log/evidence
+Size: 796 bytes. Last modified: 2026-09-27 11:10.
+Reason: no exact source/script reference to this filename found. It records PASS results from the browser UI suite.
+Evidence: frontend/README.md says current logs/screenshots are stored under evidence; v3-ui-results.json has a direct writer in frontend/tests/features_ui.py:256, but this text log has no in-repository writer/path reference.
+Dynamic reference risk: an external CI runner or manual reviewer may rely on it as evidence.
+Confidence: LOW. Evidence should not be deleted without maintainer review.
+
+MỤC 2: CODE CHẾT TRONG FILE (GROUP D)
+
+FE-D001
+File: frontend/src/features/profile/dataSource.ts:30
+Symbol: canonicalFavoriteCategories
+Evidence: full-text search across frontend/src, frontend/tests and frontend/tools returns only the function definition. It is not exported and no dynamic invocation or string-based function registry was found.
+Risk: future internal call could be planned; static analyzer unavailable.
+Confidence: MEDIUM.
+
+FE-D002
+File: frontend/src/styles.css
+Selectors with no literal class use in frontend source: `.profile-grid` (3422, 4601, 4606, 5686, 5710), `.account-signout` (10089), `.personal-info-card` (10084, 10158, 10180, 10190), `.password-card` (10085, 10109, 10115, 10132, 10137, 10141, 10157, 10158, 10159, 10181, 10193), `.personal-account-meta` (10094, 10100, 10108, 10114, 10185), `.password-account-info` (10109, 10115, 10120, 10127), and `.password-toggle` (10141, 10157).
+Reason: these rules style the prior split profile/password-card layout, whose components/markup are no longer in active source. The current password modal still uses `.password-field`; that shared Auth login/register rule is active and is not a candidate.
+Dynamic class risk: low for these profile-specific names (no className prefix/interpolation, CMS data or route-generated class path found). Generic selectors such as `.status-*`, `.topic-*`, giveaway/prize classes were not flagged because source constructs them dynamically or tests them.
+Confidence: MEDIUM; analyzers were unavailable, so preserve until reviewed.
+
+MỤC 3: COMMENT (GROUP G)
+FE-C001
+File: frontend/src/styles.css
+Potentially removable: 2 decorative section comments at lines 9900 and 10061 (`Events: search, create form, submissions`; `Create Post modal`). They are navigation labels only. Confidence MEDIUM; they may help maintainers navigate the large stylesheet.
+
+FE-C002
+File: frontend/src/features/Giveaways.tsx
+Potentially removable: 1 block comment spanning lines 3-700 containing the abandoned full Giveaway page implementation. It includes duplicate old component code while the active file exports a null placeholder. This overlaps FE-F004; count it once as a comment block, not as an additional file deletion.
+Confidence MEDIUM; preserve until maintainers confirm the paused feature is not planned.
+
+Comments/directives to KEEP: frontend/START_DEMO.sh:1 shebang. No project-source SPDX/license, eslint-disable, @ts-ignore or @ts-expect-error directive was found. Preserve TODO/security/behavior comments not listed as decorative; no suggestion is made to remove comments in tests or documentation.
+
+MỤC 4: DEPENDENCY KHÔNG DÙNG (GROUP F)
+No high-confidence unused frontend dependency candidate found.
+Evidence: react/react-dom are imported by app/components; Vite is used by package scripts/config; TypeScript is used by build and TS-transpiling tests; @types/react and @types/react-dom are compiler type packages. depcheck/Knip could not run without installing tools.
+Possible implicit use: TS type packages are consumed by compiler resolution rather than ordinary runtime imports. Keep them.
+
+MỤC 5: NHỮNG THỨ KHÔNG CHẮC CHẮN
+- FE-F001 evidence log has no exact writer, but evidence is documented and its PASS results may be useful. Retain until a maintainer confirms it can be regenerated and discarded.
+- FE-F002 is a tiny re-export facade with no internal consumer; external/downstream imports cannot be searched.
+- FE-F003 depends on a component whose UI is currently commented out; do not remove the tested giveaway data-source/state modules.
+- FE-F004 may be intentionally paused rather than abandoned; the component is not in App routes, but the feature domain is tested and the commented implementation may be reference material.
+- FE-D001 helper, FE-D002 old CSS rules and decorative comments are review items only; this audit performs no cleanup.
+- frontend/docs/upstream-v1/** is explicitly called archival in frontend/README.md and should remain available for historical context.
+
+MỤC 6: FILE ĐƯỢC BẢO VỆ
+- frontend/package-lock.json: lock file.
+- frontend/.env.example and all `.env*`: environment examples/secrets.
+- frontend/index.html, frontend/src/main.tsx, frontend/src/App.tsx, vite.config.ts, tsconfig.json, package.json, START_DEMO scripts and frontend/tools/**: application entry/config/scripts.
+- frontend/public/** including media/art: public/static assets.
+- frontend/evidence screenshots and frontend/evidence/v3-ui-results.json: evidence; tests/features_ui.py:256 writes the JSON result file.
+- frontend/docs/upstream-v1/**: archived docs identified in README.
+- frontend/tests/**: active test suite and harness; no test file is proposed for deletion.
+- Source routes, API clients, domain types, seed data, i18n files if introduced, migration/config files and any future generated API clients are protected by rule. No frontend i18n directory, generated API client, migration folder, Dockerfile or CI workflow was found in the scan.
+- frontend/dist, frontend/dist-vite, node_modules and build outputs were excluded from the candidate scan as generated/vendor output.
+
+PHỤ LỤC: KẾT QUẢ THÔ CÔNG CỤ
+
+npx --no-install knip:
+npm error npx canceled due to missing packages and no YES option: ["knip@6.38.0"]
+
+npx --no-install depcheck:
+npm error npx canceled due to missing packages and no YES option: ["depcheck@1.4.7"]
+
+npx --no-install ts-prune:
+npm error npx canceled due to missing packages and no YES option: ["ts-prune@0.10.3"]
+
+npx --no-install eslint --version:
+npm error npx canceled due to missing packages and no YES option: ["eslint@10.11.0"]
+
+No tool package was installed. Npx log files were written only to the user npm cache outside this repository. Static checks used: complete text filename/reference searches, PowerShell file inventory, SHA-256 duplicate comparison, a read-only Python AST/import scan (backend), and a PostCSS/source class-name scan (frontend). The class scan produced 47 no-literal-match selectors before manual filtering; most are runtime-generated classes and were not recommended for removal. Example dynamic forms include `status-` + status, `topic-` + topic, prize ranks, and template/composed className values.

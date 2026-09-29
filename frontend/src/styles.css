@@ -9897,7 +9897,6 @@ td small {
     animation: none;
   }
 }
-/* ---- Events: search, create form, submissions ---- */
 
 .event-search {
   display: grid;
@@ -10058,7 +10057,6 @@ td small {
   gap: 0.9rem;
 }
 
-/* ---- Create Post modal ---- */
 
 .create-post-overlay {
   position: fixed;

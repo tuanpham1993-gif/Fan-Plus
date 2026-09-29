@@ -82,10 +82,10 @@ def update_user_profile():
         return jsonify({'message': str(exc)}), 400
     except Exception:
         db.session.rollback()
-        return jsonify({'message': 'Không thể lưu hồ sơ'}), 500
+        return jsonify({'message': 'Could not save profile'}), 500
 
     return jsonify({
-        'message': 'Cập nhật hồ sơ cá nhân thành công',
+        'message': 'Profile updated successfully',
         'user': updated_user.to_dict()
     }), 200
 
@@ -100,13 +100,13 @@ def update_user_password():
     new_password = data.get('new_password', '')
 
     if current_password == '' or new_password == '':
-        return jsonify({'message': 'Vui lòng nhập mật khẩu hiện tại và mật khẩu mới'}), 400
+        return jsonify({'message': 'Please enter your current password and a new password'}), 400
 
     if new_password == current_password:
-        return jsonify({'message': 'Mật khẩu mới không được trùng mật khẩu cũ'}), 400
+        return jsonify({'message': 'New password must not be the same as the old password'}), 400
 
     if not verify_password(user.password_hash, current_password):
-        return jsonify({'message': 'Mật khẩu hiện tại không đúng'}), 400
+        return jsonify({'message': 'Current password is incorrect'}), 400
 
     is_valid, err_msg = validate_password_complexity(new_password)
     if not is_valid:
@@ -119,10 +119,10 @@ def update_user_password():
         db.session.commit()
     except Exception as exc:
         db.session.rollback()
-        return jsonify({'message': 'Không thể đổi mật khẩu. Vui lòng thử lại'}), 500
+        return jsonify({'message': 'Could not change password. Please try again'}), 500
 
     return jsonify({
-        'message': 'Đổi mật khẩu thành công',
+        'message': 'Password changed successfully',
         'user': user.to_dict()
     }), 200
 
@@ -131,41 +131,41 @@ def update_user_password():
 @token_required
 def upload_user_avatar():
     if request.content_length is not None and request.content_length > MAX_AVATAR_SIZE_WITH_PADDING:
-        return jsonify({'message': 'Kích thước ảnh quá lớn. Tối đa 2MB'}), 413
+        return jsonify({'message': 'Image is too large. Maximum size is 2MB'}), 413
 
     if 'avatar' not in request.files:
-        return jsonify({'message': 'Thiếu file avatar'}), 400
+        return jsonify({'message': 'Missing avatar file'}), 400
 
     file = request.files['avatar']
     if file.filename == '':
-        return jsonify({'message': 'Vui lòng chọn file ảnh hợp lệ'}), 400
+        return jsonify({'message': 'Please select a valid image file'}), 400
 
     file_bytes = file.read(MAX_AVATAR_SIZE + 1)
     if not file_bytes:
-        return jsonify({'message': 'File ảnh không hợp lệ'}), 400
+        return jsonify({'message': 'Invalid image file'}), 400
 
     if len(file_bytes) > MAX_AVATAR_SIZE:
-        return jsonify({'message': 'Kích thước ảnh quá lớn. Tối đa 2MB'}), 413
+        return jsonify({'message': 'Image is too large. Maximum size is 2MB'}), 413
 
     original_name = os.path.basename(file.filename)
     extension = original_name.rsplit('.', 1)[1].lower() if '.' in original_name else ''
     if extension not in ALLOWED_AVATAR_EXTENSIONS:
-        return jsonify({'message': 'Định dạng ảnh không hợp lệ. Chỉ hỗ trợ png, jpg, jpeg, webp'}), 415
+        return jsonify({'message': 'Invalid image format. Only png, jpg, jpeg, webp are supported'}), 415
 
     if not _image_magic_matches(file_bytes, extension):
-        return jsonify({'message': 'Dữ liệu ảnh không hợp lệ'}), 415
+        return jsonify({'message': 'Invalid image data'}), 415
 
     os.makedirs(AVATAR_UPLOAD_DIR, exist_ok=True)
     new_filename = _safe_avatar_filename(g.current_user.id, original_name)
     if not new_filename:
-        return jsonify({'message': 'Tên file ảnh không hợp lệ'}), 415
+        return jsonify({'message': 'Invalid image file name'}), 415
 
     save_path = os.path.join(AVATAR_UPLOAD_DIR, new_filename)
     try:
         with open(save_path, 'wb') as avatar_file:
             avatar_file.write(file_bytes)
     except OSError:
-        return jsonify({'message': 'Không thể lưu ảnh avatar'}), 500
+        return jsonify({'message': 'Could not save avatar image'}), 500
 
     previous_avatar_url = g.current_user.avatar or ''
     new_avatar_url = f'/api/uploads/avatars/{new_filename}'
@@ -176,13 +176,13 @@ def upload_user_avatar():
         db.session.rollback()
         if os.path.exists(save_path):
             os.remove(save_path)
-        return jsonify({'message': 'Lưu avatar thất bại'}), 500
+        return jsonify({'message': 'Failed to save avatar'}), 500
 
     if previous_avatar_url and previous_avatar_url.startswith('/api/uploads/avatars/'):
         _delete_old_avatar_if_needed(g.current_user, previous_avatar_url)
 
     return jsonify({
-        'message': 'Tải ảnh đại diện thành công',
+        'message': 'Avatar uploaded successfully',
         'user': g.current_user.to_dict()
     }), 200
 
@@ -198,12 +198,12 @@ def remove_user_avatar():
         db.session.commit()
     except Exception:
         db.session.rollback()
-        return jsonify({'message': 'Xóa avatar thất bại'}), 500
+        return jsonify({'message': 'Failed to remove avatar'}), 500
 
     _delete_old_avatar_if_needed(user, previous_avatar_url)
 
     return jsonify({
-        'message': 'Xóa ảnh đại diện thành công',
+        'message': 'Avatar removed successfully',
         'user': user.to_dict()
     }), 200
 

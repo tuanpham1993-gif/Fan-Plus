@@ -8,22 +8,22 @@ def token_required(f):
     def decorated(*args, **kwargs):
         auth_header = request.headers.get('Authorization')
         if not auth_header or not auth_header.startswith('Bearer '):
-            return jsonify({'message': 'Vui lòng đăng nhập để truy cập đường dẫn này (Thiếu Token xác thực)'}), 401
+            return jsonify({'message': 'Please log in to access this route (Missing authentication token)'}), 401
 
         token = auth_header.split(' ')[1]
         payload, error = decode_access_token(token)
         
         if error:
-            return jsonify({'message': f'Phiên đăng nhập không hợp lệ hoặc đã hết hạn ({error})'}), 401
+            return jsonify({'message': f'Invalid or expired session ({error})'}), 401
 
         user_id = payload.get('user_id')
         user = User.query.get(user_id)
         
         if not user:
-            return jsonify({'message': 'Tài khoản không tồn tại trong hệ thống'}), 401
+            return jsonify({'message': 'Account does not exist in the system'}), 401
 
         if user.status != 'active':
-            return jsonify({'message': 'Tài khoản đã bị tạm khóa hoặc ngưng hoạt động'}), 401
+            return jsonify({'message': 'Account has been suspended or deactivated'}), 401
 
         g.current_user = user
         return f(*args, **kwargs)
@@ -52,6 +52,6 @@ def admin_required(f):
     def decorated(*args, **kwargs):
         current_user = g.current_user
         if current_user.role != 'admin':
-            return jsonify({'message': 'Truy cập bị từ chối. Bạn không có quyền Admin'}), 403
+            return jsonify({'message': 'Access denied. You do not have Admin permission'}), 403
         return f(*args, **kwargs)
     return decorated
