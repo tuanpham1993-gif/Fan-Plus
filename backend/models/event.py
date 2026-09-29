@@ -1,26 +1,69 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from extensions import db
 
+
 class Event(db.Model):
-    __tablename__ = 'events'
+    __tablename__ = "events"
 
-    id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(200), nullable=False)
-    description = db.Column(db.Text, default='')
-    location = db.Column(db.String(200), nullable=False)
-    event_date = db.Column(db.String(100), nullable=False)
-    banner = db.Column(db.String(500), default='')
-    organizer = db.Column(db.String(120), default='Fan Hub Plus Team')
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
 
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'title': self.title,
-            'description': self.description,
-            'location': self.location,
-            'event_date': self.event_date,
-            'banner': self.banner or 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1200',
-            'organizer': self.organizer,
-            'created_at': self.created_at.isoformat() if self.created_at else None
-        }
+    content_id = db.Column(
+        db.Integer,
+        db.ForeignKey("contents.id"),
+        nullable=False,
+        unique=True
+    )
+
+    location_name = db.Column(
+        db.String(255),
+        nullable=False
+    )
+
+    city = db.Column(
+        db.String(100),
+        nullable=False
+    )
+
+    latitude = db.Column(
+        db.Numeric(10, 7),
+        nullable=False
+    )
+
+    longitude = db.Column(
+        db.Numeric(10, 7),
+        nullable=False
+    )
+
+    start_time = db.Column(
+        db.DateTime,
+        nullable=False
+    )
+
+    end_time = db.Column(
+        db.DateTime,
+        nullable=True
+    )
+
+    register_url = db.Column(
+        db.String(500),
+        nullable=True
+    )
+
+    created_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc)
+    )
+
+    updated_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc)
+    )
+
+    content = db.relationship(
+        "Content",
+        back_populates="event"
+    )

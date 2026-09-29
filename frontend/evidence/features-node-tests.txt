@@ -1,0 +1,148 @@
+TAP version 13
+# Subtest: Calendar quarters use Vietnam midnight and a 20:00 first-day draw
+ok 1 - Calendar quarters use Vietnam midnight and a 20:00 first-day draw
+  ---
+  duration_ms: 1.338214
+  type: 'test'
+  ...
+# Subtest: Native WebCrypto SHA-256 and HMAC ranking match Node independent implementation
+ok 2 - Native WebCrypto SHA-256 and HMAC ranking match Node independent implementation
+  ---
+  duration_ms: 13.997491
+  type: 'test'
+  ...
+# Subtest: Guest is gated and pending post is not public
+ok 3 - Guest is gated and pending post is not public
+  ---
+  duration_ms: 1.178028
+  type: 'test'
+  ...
+# Subtest: Post validation {"title":"a"}
+ok 4 - Post validation {"title":"a"}
+  ---
+  duration_ms: 0.275045
+  type: 'test'
+  ...
+# Subtest: Post validation {"body":"x"}
+ok 5 - Post validation {"body":"x"}
+  ---
+  duration_ms: 0.399529
+  type: 'test'
+  ...
+# Subtest: Post validation {"topic":"other"}
+ok 6 - Post validation {"topic":"other"}
+  ---
+  duration_ms: 0.2105
+  type: 'test'
+  ...
+# Subtest: Post validation {"rating":6}
+ok 7 - Post validation {"rating":6}
+  ---
+  duration_ms: 0.380001
+  type: 'test'
+  ...
+# Subtest: Post validation {"rating":1.5}
+ok 8 - Post validation {"rating":1.5}
+  ---
+  duration_ms: 0.132205
+  type: 'test'
+  ...
+# Subtest: Post validation {"subject":""}
+ok 9 - Post validation {"subject":""}
+  ---
+  duration_ms: 0.936322
+  type: 'test'
+  ...
+# Subtest: Author cannot self-review; duplicate review is rejected
+ok 10 - Author cannot self-review; duplicate review is rejected
+  ---
+  duration_ms: 1.006064
+  type: 'test'
+  ...
+# Subtest: Edits return to moderation and enforce author/version
+ok 11 - Edits return to moderation and enforce author/version
+  ---
+  duration_ms: 0.614597
+  type: 'test'
+  ...
+# Subtest: One reaction per user, replacement, unreact and guest block
+ok 12 - One reaction per user, replacement, unreact and guest block
+  ---
+  duration_ms: 0.516392
+  type: 'test'
+  ...
+# Subtest: Comments enforce reply parent scope/depth and soft deletion
+ok 13 - Comments enforce reply parent scope/depth and soft deletion
+  ---
+  duration_ms: 0.669578
+  type: 'test'
+  ...
+# Subtest: Reports are private, unique while open, and moderatable
+ok 14 - Reports are private, unique while open, and moderatable
+  ---
+  duration_ms: 0.577782
+  type: 'test'
+  ...
+# Subtest: Lore Gojo reply discloses a sample and not LLM
+ok 15 - Lore Gojo reply discloses a sample and not LLM
+  ---
+  duration_ms: 380.891737
+  type: 'test'
+  ...
+# Subtest: Unknown film is not answered using an unrelated sample
+ok 16 - Unknown film is not answered using an unrelated sample
+  ---
+  duration_ms: 380.467413
+  type: 'test'
+  ...
+# Subtest: Lore topic and spoiler filters are applied before selection
+ok 17 - Lore topic and spoiler filters are applied before selection
+  ---
+  duration_ms: 762.315339
+  type: 'test'
+  ...
+# Subtest: Chat history is scoped and can be cleared
+ok 18 - Chat history is scoped and can be cleared
+  ---
+  duration_ms: 0.526677
+  type: 'test'
+  ...
+# Subtest: Entry is free/explicit/idempotent and admin cannot enter
+ok 19 - Entry is free/explicit/idempotent and admin cannot enter
+  ---
+  duration_ms: 2.12173
+  type: 'test'
+  ...
+# Subtest: Empty draw is blocked and lock forbids additional entries
+ok 20 - Empty draw is blocked and lock forbids additional entries
+  ---
+  duration_ms: 2.781313
+  type: 'test'
+  ...
+# Subtest: Draw saves once, awards unique tickets, verifies all ranks and rejects tampering
+ok 21 - Draw saves once, awards unique tickets, verifies all ranks and rejects tampering
+  ---
+  duration_ms: 2.990492
+  type: 'test'
+  ...
+# Subtest: One entrant receives one prize, not three
+ok 22 - One entrant receives one prize, not three
+  ---
+  duration_ms: 1.518711
+  type: 'test'
+  ...
+# Subtest: Product source contains no emoji pictographs
+ok 23 - Product source contains no emoji pictographs
+  ---
+  duration_ms: 2.310078
+  type: 'test'
+  ...
+1..23
+# tests 23
+# suites 0
+# pass 23
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1612.00462

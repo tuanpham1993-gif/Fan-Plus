@@ -1,96 +1,154 @@
-from flask import Blueprint, request, jsonify
-from extensions import db
-from models import User, Role
-from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
-import re
+from flask import Blueprint, request, jsonify, g
+from crud import auth_crud
+from schema.auth_schema import (
+    validate_register_data,
+    validate_login_data,
+    validate_forgot_password_data,
+    validate_reset_password_data
+)
+from utils.password_utils import hash_password, verify_password
+from utils.jwt_utils import generate_access_token, generate_and_save_refresh_token
+from middleware.auth_middleware import token_required
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
 @auth_bp.route('/register', methods=['POST'])
 def register():
-    data = request.get_json() or {}
-    username = data.get('username', '').strip()
+    data = request.get_json(silent=True) or {}
+    
+    is_valid, err_msg = validate_register_data(data)
+    if not is_valid:
+        return jsonify({'message': err_msg}), 400
+
+    name = data.get('name', '').strip()
     email = data.get('email', '').strip().lower()
     password = data.get('password', '')
-    full_name = data.get('full_name', '').strip()
 
-    if not username or not email or not password:
-        return jsonify({'error': 'Username, email and password are required'}), 400
+    existing_user = auth_crud.get_user_by_email(email)
+    if existing_user:
+        return jsonify({'message': 'Email already exists'}), 409
 
-    if len(username) < 3:
-        return jsonify({'error': 'Username must be at least 3 characters'}), 400
-
-    if len(password) < 6:
-        return jsonify({'error': 'Password must be at least 6 characters'}), 400
-
-    email_regex = r'^[\w\.-]+@[\w\.-]+\.\w+$'
-    if not re.match(email_regex, email):
-        return jsonify({'error': 'Invalid email format'}), 400
-
-    if User.query.filter_by(username=username).first():
-        return jsonify({'error': 'Username is already taken'}), 400
-
-    if User.query.filter_by(email=email).first():
-        return jsonify({'error': 'Email is already registered'}), 400
-
-    user_role = Role.query.filter_by(name='User').first()
-    role_id = user_role.id if user_role else 2
-
-    user = User(
-        username=username,
+    user = auth_crud.create_user(
+        name=name,
         email=email,
-        full_name=full_name or username,
-        role_id=role_id
+        password_hash=hash_password(password),
+        role='user',
+        status='active'
     )
-    user.set_password(password)
-
-    db.session.add(user)
-    db.session.commit()
-
-    access_token = create_access_token(identity=str(user.id))
 
     return jsonify({
-        'message': 'User registered successfully',
-        'access_token': access_token,
+        'message': 'Account registered successfully',
         'user': user.to_dict()
     }), 201
 
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
-    data = request.get_json() or {}
-    identifier = data.get('username_or_email', '').strip()
+    data = request.get_json(silent=True) or {}
+    
+    is_valid, err_msg = validate_login_data(data)
+    if not is_valid:
+        return jsonify({'message': err_msg}), 400
+
+    email = data.get('email', '').strip().lower()
     password = data.get('password', '')
 
-    if not identifier or not password:
-        return jsonify({'error': 'Username/email and password are required'}), 400
+    user = auth_crud.get_user_by_email(email)
+    if not user or not verify_password(user.password_hash, password):
+        return jsonify({'message': 'Incorrect email or password'}), 401
 
-    user = User.query.filter(
-        (User.username == identifier) | (User.email == identifier.lower())
-    ).first()
+    if user.status != 'active':
+        return jsonify({'message': 'Account has been suspended or deactivated'}), 401
 
-    if not user or not user.check_password(password):
-        return jsonify({'error': 'Invalid credentials'}), 401
-
-    access_token = create_access_token(identity=str(user.id))
+    access_token = generate_access_token(user.id, user.role)
+    refresh_token = generate_and_save_refresh_token(user.id)
 
     return jsonify({
-        'message': 'Login successful',
         'access_token': access_token,
+        'refresh_token': refresh_token,
         'user': user.to_dict()
+    }), 200
+
+
+@auth_bp.route('/forgot-password', methods=['POST'])
+def forgot_password():
+    data = request.get_json(silent=True) or {}
+    is_valid, err_msg = validate_forgot_password_data(data)
+    if not is_valid:
+        return jsonify({'message': err_msg}), 400
+
+    email = data.get('email', '').strip().lower()
+    user = auth_crud.get_user_by_email(email)
+    if not user:
+        return jsonify({'message': 'If the email exists in the system, a recovery link has been created'}), 200
+
+    reset_token = auth_crud.create_password_reset_token(user)
+    reset_link = f"/reset-password?token={reset_token}"
+
+    return jsonify({
+        'message': 'Password recovery request created successfully',
+        'reset_token': reset_token,
+        'reset_link': reset_link
+    }), 200
+
+
+@auth_bp.route('/reset-password', methods=['POST'])
+def reset_password():
+    data = request.get_json(silent=True) or {}
+    is_valid, err_msg = validate_reset_password_data(data)
+    if not is_valid:
+        return jsonify({'message': err_msg}), 400
+
+    reset_token = data.get('reset_token', '').strip()
+    new_password = data.get('new_password', '')
+
+    user = auth_crud.get_user_by_reset_token(reset_token)
+    if not user:
+        return jsonify({'message': 'Reset token is invalid or has expired'}), 400
+
+    auth_crud.update_user_password(user, hash_password(new_password))
+
+    return jsonify({'message': 'Password reset successfully. Please log in again'}), 200
+
+
+@auth_bp.route('/refresh', methods=['POST'])
+def refresh():
+    data = request.get_json(silent=True) or {}
+    token_str = data.get('refresh_token', '').strip()
+
+    if not token_str:
+        return jsonify({'message': 'Missing refresh_token in request'}), 400
+
+    token_record = auth_crud.get_refresh_token_record(token_str)
+    if not token_record or not token_record.is_active():
+        return jsonify({'message': 'Refresh token is invalid, expired, or revoked'}), 401
+
+    user = auth_crud.get_user_by_id(token_record.user_id)
+    if not user or user.status != 'active':
+        return jsonify({'message': 'Account is invalid or suspended'}), 401
+
+    new_access_token = generate_access_token(user.id, user.role)
+    return jsonify({
+        'access_token': new_access_token
     }), 200
 
 
 @auth_bp.route('/logout', methods=['POST'])
 def logout():
+    data = request.get_json(silent=True) or {}
+    token_str = data.get('refresh_token', '').strip()
+
+    if token_str:
+        token_record = auth_crud.get_refresh_token_record(token_str)
+        if token_record:
+            auth_crud.revoke_refresh_token_record(token_record)
+
     return jsonify({'message': 'Logged out successfully'}), 200
 
 
 @auth_bp.route('/me', methods=['GET'])
-@jwt_required()
+@token_required
 def get_me():
-    user_id = get_jwt_identity()
-    user = User.query.get(int(user_id))
-    if not user:
-        return jsonify({'error': 'User not found'}), 44
-    return jsonify({'user': user.to_dict()}), 200
+    return jsonify({
+        'user': g.current_user.to_dict()
+    }), 200

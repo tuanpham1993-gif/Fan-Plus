@@ -1,0 +1,40 @@
+# Environment variables (contains secret keys & passwords)
+.env
+*.env
+
+# SQLite local databases
+*.db
+*.sqlite3
+
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+ENV/
+env/
+backend/uploads/*
+
+# Temporary files and generated reports
+tmp_*
+*_report*.txt
+merge_report.txt
+
+# User-uploaded avatars are local runtime data
+backend/uploads/avatars/*
+!backend/uploads/avatars/.gitkeep
+
+# IDE & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+backend/models/__pycache__/__init__.cpython-311.pyc
+backend/models/__pycache__/__init__.cpython-311.pyc
+backend/routes/__pycache__/bookmark.cpython-311.pyc
+backend/routes/__pycache__/content.cpython-311.pyc
+backend/crud/__pycache__/content.cpython-311.pyc
+
+
+backend/routes/__pycache__/content.cpython-311.pyc
