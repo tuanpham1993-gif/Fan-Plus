@@ -2,7 +2,6 @@ from models.community import CommunityPost, CommunityComment
 from extensions import db
 
 def get_posts():
-    # Sửa lỗi: Thêm .all() vào cuối
     return CommunityPost.query.order_by(CommunityPost.created_at.desc()).all()
 
 def create_post(data):

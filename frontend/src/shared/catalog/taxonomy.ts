@@ -88,11 +88,9 @@ export function categoryLabel(value: string) {
 export function canonicalizeCategories(
   input: readonly Category[] = [],
 ): Category[] {
-  // Use categories from the Flask backend when available.
   if (input && input.length > 0) {
     return Array.from(input);
   }
 
-  // Fall back to the sample FANDOM_CATEGORIES when the backend is unavailable.
   return [...FANDOM_CATEGORIES];
 }

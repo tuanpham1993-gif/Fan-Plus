@@ -63,7 +63,6 @@ function EventDetail({ id }: { id: string }) {
   const { event: loaded, status, error } = useEventDetail(id);
   const noSearch = useMemo(() => searchFromParams(new URLSearchParams()), []);
   const demo = useEvents(noSearch, !serverMode);
-  // In the demo the list hook owns the joined state; the backend has no joins yet.
   const event = (!serverMode && demo.events.find((e) => e.id === id)) || loaded;
 
   const joinEvent = async (eventId: string) => {
@@ -266,7 +265,6 @@ function EventList() {
   const radius = Number(params.get("radius") || 0);
 
   const update = (changes: Record<string, string>, replace = false) => {
-    // Read the live URL: the debounced keyword update may fire after other filters changed.
     const p = new URL(currentPath(), "https://fanhub.invalid").searchParams;
     for (const [key, value] of Object.entries(changes)) {
       value ? p.set(key, value) : p.delete(key);
@@ -274,10 +272,7 @@ function EventList() {
     navigate("/events" + (p.size ? "?" + p : ""), replace);
   };
 
-  // Keep the box in sync when the URL changes elsewhere (reset, back button).
   useEffect(() => setKeyword(search.q), [search.q]);
-
-  // Search as the fan types, without a history entry per keystroke.
   useEffect(() => {
     const next = keyword.trim();
     if (next === search.q) return;

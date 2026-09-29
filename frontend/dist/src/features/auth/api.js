@@ -6,8 +6,6 @@ export const authApi = {
             email,
             password,
         });
-        // Flask clears/rotates the session during login, so the pre-login CSRF token
-        // must never be reused for the authenticated session.
         clearCsrf();
         return result;
     },
@@ -19,8 +17,6 @@ export const authApi = {
             return await apiClient.post("/auth/logout");
         }
         finally {
-            // Logout clears the Flask session even though this request itself needs
-            // the old session-bound CSRF token.
             clearCsrf();
         }
     },

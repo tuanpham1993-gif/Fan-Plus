@@ -108,7 +108,6 @@ const demoContentDataSource = {
         const existing = currentDb.bookmarks.find((bookmark) => bookmark.userId === active.id && bookmark.contentId === content.id);
         let nextDb = currentDb;
         if (Boolean(existing) !== bookmarked) {
-            // Demo compatibility only. Connected mode never uses repository bookmarks.
             nextDb = await repository.toggleBookmark(content.id);
         }
         const nextBookmark = nextDb.bookmarks.find((bookmark) => bookmark.userId === active.id && bookmark.contentId === content.id);

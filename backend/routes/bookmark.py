@@ -31,8 +31,6 @@ def create_bookmark_api():
 
     if db.session.get(Content, data.content_id) is None:
         return jsonify({"message": "Content not found"}), 404
-
-    # Saving the same item twice is harmless: return the existing bookmark.
     existing = get_bookmark(user_id=user_id, content_id=data.content_id)
     if existing is not None:
         return jsonify(BookmarkResponse.model_validate(existing).model_dump(mode="json")), 200

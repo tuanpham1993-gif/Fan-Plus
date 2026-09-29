@@ -9,13 +9,9 @@ from crud.community_crud import (
 
 community_bp = Blueprint("community", __name__, url_prefix="/api/community")
 
-
-# API để lấy danh sách bookmark của user (tạm thời trả về rỗng)
 @community_bp.route("/bookmarks", methods=["GET"], strict_slashes=False)
 def get_community_bookmarks():
     return jsonify([])
-
-
 
 @community_bp.route("/", methods=["GET"], strict_slashes=False)
 def feed():
@@ -51,46 +47,23 @@ def feed():
     methods=["POST"]
 )
 def create():
-
     data=request.json
-
-
     post=create_post(data)
-
-
     return jsonify({
-
         "message":"created",
-
         "id":post.id
-
     }),201
-
-
-
-
 @community_bp.route(
     "/posts/<int:id>/comments",
     methods=["POST"]
 )
 def comment(id):
-
     data=request.json
-
-
     comment=add_comment(
-
         id,
-
         data["user_id"],
-
         data["body"]
-
     )
-
-
     return jsonify({
-
         "id":comment.id
-
     }),201

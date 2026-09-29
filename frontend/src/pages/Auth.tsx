@@ -42,7 +42,6 @@ export default function Auth({ mode }: { mode: string }) {
     setBusy(true);
     try {
       if (mode === "login") {
-        // TODO: Read the token from the reCAPTCHA widget once it is available.
         const u = await login(email, password);
         navigate(
           params.get("next")
@@ -61,14 +60,12 @@ export default function Auth({ mode }: { mode: string }) {
             name,
             email,
             password,
-            // Temporary: use a fixed test token while the captcha UI is hidden.
-            // Remove the default and require a real widget token when captcha is implemented.
+            
             captcha_token: "PASSED_TEST_TOKEN",
           });
           notify(result.message || "Registration successful. Please sign in.");
           navigate("/login");
-          // TODO: If the backend adds email verification, redirect to /verify-email
-          // and restore calls to authApi.verify()/resendVerification().
+
           return;
         }
 

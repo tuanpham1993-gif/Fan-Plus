@@ -32,7 +32,6 @@ from utils.event_time import parse_event_datetime, utc_iso, vn_iso
 
 admin_ws_bp = Blueprint("admin_workspace", __name__, url_prefix="/api/admin")
 
-# The frontend addresses the four seeded categories by slug; any other category by its numeric id.
 SLUGS = {1: "anime", 2: "gaming", 3: "movies", 4: "tv"}
 SLUG_IDS = {v: k for k, v in SLUGS.items()}
 STYLE = {"anime": ("sparkles", "#ff9bb3"), "gaming": ("gamepad", "#8bded1"),
@@ -72,8 +71,6 @@ def _body(key):
     data = request.get_json(silent=True) or {}
     return data.get(key) if isinstance(data.get(key), dict) else data
 
-
-# ------------------------------------------------------------------ serializers
 def category_json(c, counts):
     key = cat_key(c.category_id)
     icon, color = STYLE.get(key, ("globe", "#8bded1"))
@@ -160,7 +157,6 @@ def workspace():
     contents = Content.query.order_by(Content.created_at.desc()).all()
     return {
         "categories": [category_json(c, counts) for c in Category.query.order_by(Category.category_id).all()],
-        # fan stories (POST) are handled in the review queue, events in the events tab
         "contents": [content_json(c, authors, likes) for c in contents if c.content_type in ("NEWS", "ARTICLE")],
         "events": [event_json(e) for e in Event.query.order_by(Event.start_time).all()],
         "users": [user_json(u) for u in User.query.order_by(User.id).all()],
@@ -175,7 +171,10 @@ def workspace():
 def get_workspace():
     return jsonify({"workspace": workspace()}), 200
 
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
 def _apply_media(content, data):
     ContentMedia.query.filter_by(content_id=content.id).delete()
     order = 0
@@ -245,7 +244,7 @@ def _delete_content_row(content):
     Bookmark.query.filter_by(content_id=content.id).delete()
     CharacterContent.query.filter_by(content_id=content.id).delete()
     Event.query.filter_by(content_id=content.id).delete()
-    db.session.delete(content)   # media, reviews and reactions cascade
+    db.session.delete(content) 
 
 
 @admin_ws_bp.delete("/contents/<int:content_id>")
@@ -258,7 +257,10 @@ def delete_content_ws(content_id):
     db.session.commit()
     return jsonify({"ok": True}), 200
 
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
 @admin_ws_bp.post("/categories")
 @admin_required
 def create_category_ws():
@@ -307,7 +309,10 @@ def delete_category_ws(key):
     db.session.commit()
     return jsonify({"ok": True}), 200
 
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
 def _event_fields(data):
     try:
         start = parse_event_datetime(data.get("startsAt"))
@@ -367,7 +372,10 @@ def delete_event_ws(event_id):
     delete_event_with_content(event)
     return jsonify({"ok": True}), 200
 
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
 @admin_ws_bp.post("/submissions/<int:content_id>/moderate")
 @admin_required
 def moderate_submission_ws(content_id):
@@ -390,7 +398,10 @@ def moderate_submission_ws(content_id):
         published = content_json(content, authors, {})
     return jsonify({"submission": submission, "publishedContent": published}), 200
 
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
 @admin_ws_bp.put("/users/<int:user_id>/status")
 @admin_required
 def set_user_status_ws(user_id):
@@ -403,7 +414,6 @@ def set_user_status_ws(user_id):
     user.status = "suspended" if suspended else "active"
     db.session.commit()
     return jsonify({"user": user_json(user)}), 200
-
 
 @admin_ws_bp.put("/feedback/<int:feedback_id>/status")
 @admin_required
@@ -418,14 +428,16 @@ def set_feedback_status_ws(feedback_id):
     db.session.commit()
     return jsonify({"feedback": feedback_json(fb)}), 200
 
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
 def _faq_payload():
     data = _body("faq")
     question, answer = (data.get("question") or "").strip(), (data.get("answer") or "").strip()
     if len(question) < 5 or len(answer) < 5:
         return None, "Question and answer must each contain at least 5 characters."
     return {"question": question[:300], "answer": answer[:2000]}, None
-
 
 @admin_ws_bp.post("/knowledge")
 @admin_required

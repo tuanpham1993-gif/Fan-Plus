@@ -564,7 +564,6 @@ function Profile() {
       });
       const updatedUser = result.user;
 
-      // Keep every input aligned with the profile confirmed by the server.
       adoptProfile(updatedUser);
       setName(updatedUser.name);
       setFandoms((updatedUser.favorite_fandoms ?? []).join(", "));

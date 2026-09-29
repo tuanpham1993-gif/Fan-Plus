@@ -500,9 +500,6 @@ export default function Admin() {
       ))}
     </nav>
   );
-
-  // Event review talks to /events directly, so it works even when the
-  // connected workspace endpoint is unavailable.
   if (serverMode && section === "events") {
     return (
       <>

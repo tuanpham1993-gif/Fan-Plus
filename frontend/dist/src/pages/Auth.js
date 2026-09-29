@@ -51,9 +51,6 @@ export default function Auth({ mode }) {
                     const result = await repository.register(name, email, password, interests);
                     setDb(result.db);
                 }
-                // Auth remounts on route change (key={pathname} in App.tsx), so this
-                // component's state does not survive the navigate below; the verify
-                // page requests its own fresh code on mount instead of relying on it.
                 navigate("/verify-email?email=" + encodeURIComponent(email));
             }
             else if (mode === "forgot") {
@@ -114,9 +111,6 @@ export default function Auth({ mode }) {
             setBusy(false);
         }
     };
-    // Navigating here loses the register step's in-memory devOtp/emailSent state
-    // (Auth is remounted per route), and a deep link (e.g. from the header banner)
-    // never had it in the first place, so always request a fresh code on arrival.
     useEffect(() => {
         if (mode !== "verify" || !serverMode || !email || verified)
             return;
@@ -130,7 +124,6 @@ export default function Auth({ mode }) {
                 // A silent best-effort request; the visible Resend button covers retry.
             }
         })();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [mode, email]);
     return (React.createElement("div", { className: "auth-layout" },
         React.createElement("div", { className: "auth-art" },

@@ -195,7 +195,6 @@ const apiEventsDataSource: EventsDataSource = {
   },
 
   async join() {
-    // Joining is not part of the Flask contract yet; the UI hides the action.
     throw new Error("Joining events is not available yet.");
   },
 };

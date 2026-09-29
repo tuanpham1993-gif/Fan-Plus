@@ -1,9 +1,4 @@
 import { apiClient } from "../../shared/http/client.js";
-/**
- * Required backend catalog contract. The current Flask backend does not yet
- * expose these routes; they remain explicit integration gaps until Backend
- * implements/agrees them.
- */
 export const CATALOG_ENDPOINTS = {
     categories: "/categories",
     contents: "/contents",

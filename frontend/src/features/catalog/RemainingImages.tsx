@@ -23,7 +23,6 @@ export function RemainingImages({
 
       <div className="gallery-grid">
         {remainingImages.map((src, index) => {
-          // +1 because galleryImages[0] is the hero image
           const galleryIndex = index + 1;
 
           return (

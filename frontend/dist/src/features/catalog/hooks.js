@@ -198,8 +198,6 @@ export function useContentDetail(id) {
             active = false;
             controller.abort();
         };
-        // Demo data is only required to become available once for this route.
-        // Subsequent demo rating/activity writes should not refetch and flash Detail.
     }, [id, user?.id, user?.role, demoReady]);
     useEffect(() => {
         if (!detail || !user)
@@ -215,8 +213,6 @@ export function useContentDetail(id) {
                 setDb(nextDb);
         })
             .catch(() => {
-            // Reading activity is non-critical and is still demo-only until its
-            // dedicated server contract is refactored.
         });
     }, [detail?.content.id, user?.id, setDb]);
     return { detail, loading, error, notFound };

@@ -13,12 +13,9 @@ def build_content_query(
     author_id=None
 ):
     query = Content.query
-
-    # Support multiple statuses, e.g. ["DONE", "PENDING"]
     if statuses:
         query = query.filter(Content.status.in_(statuses))
     elif status is not None:
-        # Backward-compatible single-status filtering
         query = query.filter(Content.status == status)
 
     if author_id is not None:

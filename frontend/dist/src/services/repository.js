@@ -4,7 +4,6 @@ import { initialDatabase, DEMO_PASSWORD } from "../domain/seed.js";
 import { validateContent, safeExternalUrl } from "../domain/logic.js";
 const DB_KEY = "fanhub.demo.db.v1", SESSION_KEY = "fanhub.demo.identity.v1", CREDENTIALS_KEY = "fanhub.demo.verifiers.v1";
 const sleep = (ms = 160) => new Promise((resolve) => setTimeout(resolve, ms));
-// Mirrors backend/fanhub/security.py's DISPOSABLE_EMAIL_DOMAINS for the local demo path.
 const DISPOSABLE_EMAIL_DOMAINS = new Set([
     "mailinator.com", "10minutemail.com", "10minutemail.net", "guerrillamail.com",
     "guerrillamail.info", "guerrillamail.biz", "guerrillamail.de", "sharklasers.com",
@@ -59,9 +58,6 @@ function emit(name) {
 }
 function syncLegacyAuthShadow(user) {
     const db = readDb();
-    // This browser-backed record is a temporary compatibility projection for
-    // legacy features. It must never be allowed to decide, or break, connected
-    // authentication: the backend session remains the source of truth.
     try {
         if (user) {
             db.users = db.users.filter((u) => u.id !== user.id);
@@ -74,8 +70,7 @@ function syncLegacyAuthShadow(user) {
         }
     }
     catch {
-        // Ignore compatibility-storage failures in connected mode. AuthProvider
-        // will still reflect the server-authenticated session correctly.
+        // AuthProvider will still reflect the server-authenticated session correctly.
     }
     emit(LEGACY_DB_CHANGED_EVENT);
     return db;
@@ -110,16 +105,11 @@ async function setPassword(email, password) {
     records[email] = { salt, hash: await verifier(password, salt) };
     sessionStorage.setItem(CREDENTIALS_KEY, JSON.stringify(records));
 }
-// This repository is a UI simulator, NOT an authentication or authorization boundary.
-// A deployed application must perform every check again on a trusted backend.
 export const repository = {
     async load() {
         await sleep();
         return readDb();
     },
-    // Transitional compatibility helpers. AuthProvider owns authentication state;
-    // these methods only keep legacy browser-backed features working until their
-    // data ownership is migrated in later chunks.
     syncLegacyAuthShadow(user) {
         return syncLegacyAuthShadow(user);
     },
@@ -309,8 +299,6 @@ export const repository = {
             throw new AppError("Display name must contain 1-60 characters.");
         const favoriteCategories = patch.favoriteCategories.filter((c) => db.categories.some((x) => x.id === c));
         if (serverMode) {
-            // Persist the server-backed fields so they survive the next /auth/me sync,
-            // instead of being silently overwritten by the authoritative server record.
             await api("/auth/profile", json("PATCH", {
                 bio: patch.bio.slice(0, 500),
                 favoriteCategories,

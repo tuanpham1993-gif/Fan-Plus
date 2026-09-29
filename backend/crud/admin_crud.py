@@ -11,7 +11,6 @@ def get_admin_stats():
     total_characters = Character.query.count()
     pending_feedback = Feedback.query.filter_by(status='pending').count()
     
-    # Only merchandise_items has a view_count column in the fanhub schema.
     total_views = int(db.session.query(func.coalesce(func.sum(MerchandiseItem.view_count), 0)).scalar() or 0)
 
     recent_contents = [

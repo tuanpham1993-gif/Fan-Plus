@@ -33,8 +33,6 @@ export const authApi = {
   async login(
     email: string,
     password: string,
-    // Temporary: use a fixed test token while the captcha UI is hidden.
-    // Remove the default and require a real widget token when captcha is implemented.
     captchaToken: string = "PASSED_TEST_TOKEN",
   ) {
     const result = await apiClient.post<any>("/auth/login", {
@@ -43,13 +41,11 @@ export const authApi = {
       captcha_token: captchaToken,
     });
     if (result?.access_token) {
-      // Save both tokens — refresh_token uses Rotation, must always save new value
       setTokens(result.access_token, result.refresh_token);
     }
     return { user: result.user as User };
   },
 
-  // These endpoints are not implemented by the current backend and return 404.
   async verify(email: string, code: string) {
     const result = await apiClient.post<{ user?: User; message?: string }>(
       "/auth/verify",
@@ -63,8 +59,6 @@ export const authApi = {
       message: result.message ?? "",
     };
   },
-
-  // These endpoints are not implemented by the current backend and return 404.
   async resendVerification(email: string) {
     const result = await apiClient.post<{
       emailSent: boolean;

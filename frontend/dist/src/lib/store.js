@@ -74,9 +74,6 @@ export function AppProvider({ children }) {
             return false;
         }
     }, [notify]);
-    // Legacy consumers still read `user` from useApp() in later refactor chunks.
-    // Authentication status/identity is owned by AuthProvider; only non-security
-    // display/profile fields are projected from the local compatibility shadow.
     const localUser = authUser && db
         ? db.users.find((candidate) => candidate.id === authUser.id) || null
         : null;

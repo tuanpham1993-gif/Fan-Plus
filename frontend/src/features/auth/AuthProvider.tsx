@@ -81,8 +81,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async (
       email: string,
       password: string,
-      // Temporary: use a fixed test token while the captcha UI is hidden.
-      // Remove the default and require a real widget token when captcha is implemented.
       captchaToken = "PASSED_TEST_TOKEN",
     ) => {
       setError(null);

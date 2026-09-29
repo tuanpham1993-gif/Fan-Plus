@@ -72,7 +72,7 @@ export const bookmarkApi = {
           );
           return toItem(row, normalizeContent(detail?.content || detail));
         } catch {
-          return null; // content was removed or is no longer visible
+          return null;
         }
       }),
     );

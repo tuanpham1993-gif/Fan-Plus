@@ -154,8 +154,6 @@ export const apiClient = {
     }),
     delete: (path, options = {}) => api(path, { ...options, method: "DELETE" }),
 };
-// Temporary compatibility helper for repository/data-source call sites that already
-// build RequestInit manually. New feature code should prefer apiClient methods.
 export const json = (method, body) => ({
     method,
     body: JSON.stringify(body),
