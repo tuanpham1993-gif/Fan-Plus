@@ -10,7 +10,7 @@ def validate_register_data(data):
     captcha_token = data.get('captcha_token', '').strip()
 
     if not name or not email or not password:
-        return False, 'Vui lòng nhập đầy đủ Tên, Email và Mật khẩu'
+        return False, 'Please enter your Name, Email and Password'
 
     if captcha_token:
         is_captcha_valid, captcha_err = verify_recaptcha(captcha_token)
@@ -19,7 +19,7 @@ def validate_register_data(data):
 
     email_regex = r'^[\w\.-]+@[\w\.-]+\.\w+$'
     if not re.match(email_regex, email):
-        return False, 'Định dạng email không hợp lệ'
+        return False, 'Invalid email format'
 
     is_valid_pw, pw_error = validate_password_complexity(password)
     if not is_valid_pw:
@@ -34,7 +34,7 @@ def validate_login_data(data):
     # captcha_token = data.get('captcha_token', '').strip()
 
     if not email or not password:
-        return False, 'Vui lòng nhập Email và Mật khẩu'
+        return False, 'Please enter your Email and Password'
 
     # if captcha_token:
     #     is_captcha_valid, captcha_err = verify_recaptcha(captcha_token)
@@ -47,10 +47,10 @@ def validate_forgot_password_data(data):
     data = data or {}
     email = data.get('email', '').strip().lower()
     if not email:
-        return False, 'Vui lòng nhập Email để khôi phục mật khẩu'
+        return False, 'Please enter your Email to recover your password'
     email_regex = r'^[\w\.-]+@[\w\.-]+\.\w+$'
     if not re.match(email_regex, email):
-        return False, 'Định dạng email không hợp lệ'
+        return False, 'Invalid email format'
     return True, None
 
 def validate_reset_password_data(data):
@@ -59,7 +59,7 @@ def validate_reset_password_data(data):
     new_password = data.get('new_password', '')
 
     if not reset_token or not new_password:
-        return False, 'Vui lòng nhập Mã xác nhận (Reset Token) và Mật khẩu mới'
+        return False, 'Please enter the Confirmation Code (Reset Token) and a new Password'
 
     is_valid_pw, pw_error = validate_password_complexity(new_password)
     if not is_valid_pw:
